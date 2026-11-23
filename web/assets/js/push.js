@@ -67,7 +67,7 @@ export function openClusterPanel(name, model, data, { planRow, goToP1 } = {}) {
       { key: "oldest", label: "Oldest (days)", num: true, fmt: (v) => (v == null ? "–" : String(v)) },
     ], rows, { maxHeight: 420 });
     const planLine = planRow ? el("div", { class: "push-plan" }, [
-      el("b", { text: `${fmtInt(planRow.mtd)} installed` }), ` of plan MTD ${fmtInt(planRow.exp)} (${planRow.exp ? Math.round((100 * planRow.mtd) / planRow.exp) : "–"}%) · month plan ${fmtInt(planRow.plan)} · needs ${planRow.need.toFixed(1)}/day vs ${planRow.rate.toFixed(1)}/day now`]) : null;
+      el("b", { text: `${fmtInt(planRow.mtd)} installed` }), ` of plan MTD ${fmtInt(planRow.exp)} (${planRow.exp ? Math.round((100 * planRow.mtd) / planRow.exp) : "–"}%) · month plan ${fmtInt(planRow.plan)} · required run rate ${planRow.need.toFixed(1)}/day vs ${planRow.rate.toFixed(1)}/day now`]) : null;
     openPanel({ title: `${name}: what to push`, sub: "Active projects not yet installed · live · click a number for its projects",
       body: el("div", { class: "push-panel" }, [
         planLine,

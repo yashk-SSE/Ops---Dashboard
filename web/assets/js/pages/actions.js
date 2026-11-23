@@ -130,7 +130,7 @@ export function render(main, { data, state, setState, ctx }) {
       [{ key: "name", label: "Cluster" }, { key: "plan", label: "Month plan", num: true }, { key: "exp", label: "Plan MTD", num: true }, { key: "mtd", label: "Installs MTD", num: true },
         { key: "projPct", label: "% achieved", num: true }, { key: "gap", label: "Behind by", num: true },
         { key: "ready", label: "Ready to install", num: true }, { key: "stuck", label: "Stuck", num: true },
-        { key: "rate", label: "Now / day", num: true, fmt: (x) => x.toFixed(1) }, { key: "need", label: "Needs / day", num: true, fmt: (x) => x.toFixed(1) }]) });
+        { key: "rate", label: "Now / day", num: true, fmt: (x) => x.toFixed(1) }, { key: "need", label: "Required Run Rate", num: true, tip: "(Month target − done so far) ÷ days left in the month", fmt: (x) => x.toFixed(1) }]) });
   const rtiDays = r2iP90 == null ? null : Math.round(r2iP90);
   exc.push({ group: "push", label: rtiDays == null ? "Ready to install, waiting too long" : `Ready to install, waiting > ${rtiDays} days`, value: rtiWaiting.length, tone: rtiWaiting.length ? "bad" : "ok",
     sub: rtiDays != null ? `active · RTI done more than ${rtiDays} days ago (${M.stuckShort(ctx)} of RTI → install)` : null,

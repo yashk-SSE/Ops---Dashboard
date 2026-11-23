@@ -8,13 +8,11 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, bucketOf, matcher, monthBounds, monthLabel, monthsBetween } from "../data.js";
 import { fmtInt, pct, tatSummary } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, foldTable, openList } from "../layout.js";
+import { momTables, block, tierTable, openList, daySpanOf, daySpanSwitch } from "../layout.js";
 import { comboChart } from "../charts.js";
 import { qhseSiteList } from "../lists.js";
 
 const SEVS = ["Zero Tolerance", "High", "Medium", "Low", "(blank)"];
-const EXPANSION = new Set(["Vijayawada", "Guntur", "Bareilly", "Meerut", "Kota", "Visakhapatnam", "Salem", "Erode", "Jodhpur",
-  "Raipur", "Trichy", "Madurai", "Prayagraj", "Krishnagiri"]);  // D-77
 const SKIP = new Set(["", "—", "Not mapped"]);
 const box = (kids) => el("div", { class: "card" }, kids);
 const pctTxt = (p) => (p == null ? "–" : `${p < 10 ? p.toFixed(1) : Math.round(p)}%`);
@@ -79,14 +77,13 @@ export function render(main, { data, state, setState, ctx }) {
       nOpen: s("nOpen"), nOld: s("nOld"), p50: tatSummary(rectified(sub, ctx.cur)).p50, ic: s("ic"), ven: s("ven") };
   };
   const sumParts = (t) => [el("span", {}, ["Audited ", el("b", { text: fmtInt(t.nA) })]), el("span", {}, ["ZT ", el("b", { text: pctTxt(t.pZT) })]), el("span", {}, ["Open Z+H ", el("b", { text: fmtInt(t.nOpen) })])];
-  const bau = cRows.filter((r) => !EXPANSION.has(r.name)), exp = cRows.filter((r) => EXPANSION.has(r.name)), allT = totalOf(cRows, "All clusters");
+  const allT = totalOf(cRows, "All clusters");
   main.append(block(1, "Quality by cluster", `${ctx.curText} · ${ctx.curRange} · open points live · click a count for its sites`,
     el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start", gap: "10px" } }, [
       el("span", { class: "rank-label", text: "% base" }), segmented([["audited", "Sites audited"], ["installed", "Sites installed"]], base, (v) => setState({ qhseBase: v }), "% base"),
       el("span", { class: "rank-label", text: "Punch points" }), segmented([["physical", "Physical audit"], ["all", "+ IC audit fails"]], withIC ? "all" : "physical", (v) => setState({ qhsePP: v }), "Punch points counted")]),
     el("div", { class: "count", style: { margin: "0 0 8px" }, text: `All clusters: ${fmtInt(allT.nA)} sites audited · ${pctTxt(allT.pZT)} with ZT · ${pctTxt(allT.pZH)} with ZT + High · ${fmtInt(allT.nOpen)} sites with open Z+H (${fmtInt(allT.nOld)} over 30 days) · ${icRep.length} ICs and ${venRep.length} vendors with 2+ ZT in 30 days` }),
-    foldTable("BAU clusters", bau, cols, totalOf(bau, "BAU"), sumParts(totalOf(bau, "BAU")), { open: true, sortKey: "nA", sortDir: -1 }),
-    exp.length ? foldTable("Expansion clusters", exp, cols, totalOf(exp, "Expansion"), sumParts(totalOf(exp, "Expansion")), { open: false, sortKey: "nA", sortDir: -1 }) : null));
+    tierTable({ rows: cRows, cols, totalOf, sumParts, tier: state.tier, onTier: (v) => setState({ tier: v }), sortKey: "nA", sortDir: -1 })));
 
   // ---------------- 2 · trend
   const grain = ["mom", "wow", "dod"].includes(state.qhseGrain) ? state.qhseGrain : "wow";
@@ -94,11 +91,11 @@ export function render(main, { data, state, setState, ctx }) {
   for (const x of rows) { const d = x[c.audit_day]; if (d == null) continue; aDay.set(d, (aDay.get(d) || 0) + 1); if (x[colZH]) zDay.set(d, (zDay.get(d) || 0) + 1); }
   const labels = [], as = [], zs = [];
   const addRange = (lbl, a, b) => { let n = 0, z = 0; for (let d = a; d <= b; d++) { n += aDay.get(d) || 0; z += zDay.get(d) || 0; } labels.push(lbl); as.push(n); zs.push(z); };
-  if (grain === "dod") for (let d = last - 29; d <= last; d++) addRange(fmtDay(d).slice(0, 6), d, d);
+  if (grain === "dod") for (let d = last - (daySpanOf(state) - 1); d <= last; d++) addRange(fmtDay(d).slice(0, 6), d, d);
   else if (grain === "wow") for (let w = 11; w >= 0; w--) { const b = last - 7 * w, a = b - 6; addRange(`${fmtDay(a).slice(0, 6)}–${fmtDay(b).slice(0, 6)}`, a, b); }
   else for (const k of monthsBetween(data.meta.windows.YTD[0], last)) { const [a, b] = monthBounds(k); addRange(monthLabel(k) + (b > last ? " (MTD)" : ""), a, Math.min(b, last)); }
   main.append(block(2, "Audits and ZT + High over time", `Bars = sites audited, dashed line = sites audited with a ZT or High point${withIC ? " (incl. IC audit fails)" : ""}`,
-    box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"]], grain, (v) => setState({ qhseGrain: v }), "Grain")]),
+    box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"]], grain, (v) => setState({ qhseGrain: v }), "Grain"), grain === "dod" ? daySpanSwitch(state, setState) : null]),
       comboChart(labels, { label: "Sites audited", data: as, color: "--series-1" }, { label: "Sites with ZT + High", data: zs, color: "--series-2" }, { yFormat: (v) => fmtInt(v), height: 290 })])));
 
   // ---------------- 3 · split: punch points on sites audited this month, by severity or component

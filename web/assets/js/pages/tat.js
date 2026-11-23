@@ -8,13 +8,11 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, monthBounds, monthLabel, monthsBetween } from "../data.js";
 import { fmtInt, pct, tatSummary, percentile } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, foldTable, openList } from "../layout.js";
+import { momTables, block, tierTable, openList } from "../layout.js";
 import { lineChart } from "../charts.js";
 
 const AGE = [[0, 1, "0–1 d"], [2, 4, "2–4 d"], [5, 7, "5–7 d"], [8, 15, "8–15 d"], [16, 30, "16–30 d"], [31, null, "30+ d"]];
 const BUCKETS = ["On track", "Past P50", "Past P75", "Past P90"];
-const EXPANSION = new Set(["Vijayawada", "Guntur", "Bareilly", "Meerut", "Kota", "Visakhapatnam", "Salem", "Erode", "Jodhpur",
-  "Raipur", "Trichy", "Madurai", "Prayagraj", "Krishnagiri"]);  // D-77
 const SKIP = new Set(["", "—", "Not mapped", "No cell", "Unknown"]);
 const box = (kids) => el("div", { class: "card" }, kids);
 const pctTxt = (p) => (p == null ? "–" : `${Math.round(p)}%`);
@@ -100,13 +98,11 @@ export function render(main, { data, state, setState, ctx }) {
     ...STAGES.map((s) => ({ key: `l_${s.id}`, label: `${s.name} late`, num: true, fmt: lateCell(s) })), { key: "late", label: "Late, all stages", num: true, fmt: fmtInt }];
   const totalOf = (rs, name) => { const t = { footer: true, name, open: 0, late: 0, by: {} }; for (const r of rs) { t.open += r.open; t.late += r.late; for (const s of STAGES) { const b = r.by[s.id]; if (!b) continue; (t.by[s.id] ||= { open: [], late: [] }).open.push(...b.open); t.by[s.id].late.push(...b.late); } } STAGES.forEach((s) => { t[`l_${s.id}`] = t.by[s.id] ? t.by[s.id].late.length : 0; }); return t; };
   const sumParts = (t) => [el("span", {}, ["Open ", el("b", { text: fmtInt(t.open) })]), el("span", {}, ["Late ", el("b", { text: fmtInt(t.late) })]), el("span", { class: `pill ${tone(pct(t.late, t.open))}`, text: `${pctTxt(pct(t.late, t.open))} late` })];
-  const bau = gRows.filter((r) => !EXPANSION.has(r.name)), exp = gRows.filter((r) => EXPANSION.has(r.name));
   main.append(block(1, "Breach by stage and cluster", `Open projects (${holdOn ? "active + on-hold" : "active"}) · benchmarks India, stages completed ${fmtDay(win[0])} – ${fmtDay(win[1])} · late = past the limit (${R}, top bar) · a project waiting for several stages counts in each`,
     el("div", { class: "card-actions", style: { marginBottom: "10px", justifyContent: "flex-start" } }, [segmented([["active", "Active"], ["hold", "Active + on-hold"]], holdOn ? "hold" : "active", (v) => setState({ stageHold: v === "hold" }), "Projects")]),
     box([el("div", { class: "card-sub", style: { margin: "0 0 8px" }, text: "India: stage benchmarks and open projects" }), stageTable]),
     el("div", { style: { height: "10px" } }),
-    foldTable("BAU clusters", bau, cols, totalOf(bau, "BAU"), sumParts(totalOf(bau, "BAU")), { open: true, sortKey: "late", sortDir: -1 }),
-    exp.length ? foldTable("Expansion clusters", exp, cols, totalOf(exp, "Expansion"), sumParts(totalOf(exp, "Expansion")), { open: false, sortKey: "late", sortDir: -1 }) : null));
+    tierTable({ rows: gRows, cols, totalOf, sumParts, tier: state.tier, onTier: (v) => setState({ tier: v }), sortKey: "late", sortDir: -1 })));
 
   // ---------------- 2 · trend: stage P50 by month / week (completed stages, page filters)
   const grain = state.tatGrain === "wow" ? "wow" : "mom";

@@ -10,13 +10,11 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, monthKey, monthBounds, monthLabel, monthsBetween, shiftMonth } from "../data.js";
 import { fmtInt, percentile } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, foldTable, openList, stageMatrix } from "../layout.js";
+import { momTables, block, tierTable, openList, stageMatrix, daySpanOf, daySpanSwitch } from "../layout.js";
 import { lineChart } from "../charts.js";
 import { p1FactList, p2FactList, p1PendingList } from "../lists.js";
 import { pushModel } from "../push.js";
 
-const EXPANSION = new Set(["Vijayawada", "Guntur", "Bareilly", "Meerut", "Kota", "Visakhapatnam", "Salem", "Erode", "Jodhpur",
-  "Raipur", "Trichy", "Madurai", "Prayagraj", "Krishnagiri"]);  // D-77
 const SKIP = new Set(["", "—", "Not mapped"]);
 const OMS_ORDER = ["Pending Onboarding", "Pending DEV Schedule", "DEV scheduled", "In 3D Design", "3D Design Approval", "3D Design & Installation guide verification",
   "Awaiting Client Design Approval", "Payment 1 Scheduled", "Payment 1 Confirmation", "EMI Dependancy System Task", "Payment 2 Scheduled", "Payment 2 Confirmation",
@@ -42,7 +40,9 @@ export function render(main, { data, state, setState, ctx }) {
   const conv = (rs, r, k) => M.mConversion(rs, r, k, (x) => x[ci.hoto_day], instDay);
   const hotoList = p1FactList(f, install.id), pendList = p1PendingList(f);
   const openHotos = (title, xs) => openList({ title, sub: `${fmtInt(xs.length)} HOTOs`, cols: hotoList.cols, rows: xs.map(hotoList.row), filename: `${title.replace(/\W+/g, "_").toLowerCase()}.csv` });
-  const openPend = (title, xs) => openList({ title, sub: `${fmtInt(xs.length)} projects · live`, cols: pendList.cols, rows: [...xs].sort((a, b) => b[pci.days_since_hoto] - a[pci.days_since_hoto]).map(pendList.row), filename: `${title.replace(/\W+/g, "_").toLowerCase()}.csv` });
+  const lateCols = [...pendList.cols, { key: "late", label: "Late", tip: `Past its stage's limit in days from HOTO (stuck rule: ${R}, top bar)` }];
+  const lateRow = (x) => ({ ...pendList.row(x), late: push.isStuck(x) ? `Late (past ${R})` : "Not late" });
+  const openPend = (title, xs) => openList({ title, sub: `${fmtInt(xs.length)} projects · live · filter Late to see the late ones`, cols: lateCols, rows: [...xs].sort((a, b) => b[pci.days_since_hoto] - a[pci.days_since_hoto]).map(lateRow), filename: `${title.replace(/\W+/g, "_").toLowerCase()}.csv` });
   const btn = (n, onClick) => (n ? el("button", { type: "button", class: "link-btn", text: fmtInt(n), onclick: (e) => { e.stopPropagation(); onClick(); } }) : el("span", { class: "count", text: "0" }));
 
   // ---------------- 1 · cluster table
@@ -86,12 +86,10 @@ export function render(main, { data, state, setState, ctx }) {
   };
   const sumParts = (t) => [el("span", {}, ["HOTOs ", el("b", { text: fmtInt(t.nH) })]), el("span", {}, ["M0 ", el("b", { text: t.m0 == null ? "–" : `${t.m0.toFixed(1)}%` })]),
     el("span", {}, ["P50 ", el("b", { text: dCell(t.p50) })]), el("span", {}, ["Stuck ", el("b", { text: fmtInt(t.nS) })])];
-  const bau = cRows.filter((r) => !EXPANSION.has(r.name)), exp = cRows.filter((r) => EXPANSION.has(r.name));
   const allT = totalOf(cRows, "All clusters");
   main.append(block(1, "HOTO → installation by cluster", `${ctx.curText} · ${ctx.curRange} · conversion vs the same days last month · TAT of projects installed this month · pipeline live (active) · click a count for its projects`,
     el("div", { class: "count", style: { margin: "0 0 8px" }, text: `All clusters: ${fmtInt(allT.nH)} HOTOs · M0 ${allT.m0 == null ? "–" : `${allT.m0.toFixed(1)}%`} · M1 ${allT.m1 == null ? "–" : `${allT.m1.toFixed(1)}%`} · HOTO → install P50 ${dCell(allT.p50)} · ${fmtInt(allT.nP)} not installed, ${fmtInt(allT.nS)} stuck (${R})` }),
-    foldTable("BAU clusters", bau, cols, totalOf(bau, "BAU"), sumParts(totalOf(bau, "BAU")), { open: true, sortKey: "nH", sortDir: -1 }),
-    exp.length ? foldTable("Expansion clusters", exp, cols, totalOf(exp, "Expansion"), sumParts(totalOf(exp, "Expansion")), { open: false, sortKey: "nH", sortDir: -1 }) : null));
+    tierTable({ rows: cRows, cols, totalOf, sumParts, tier: state.tier, onTier: (v) => setState({ tier: v }), sortKey: "nH", sortDir: -1 })));
 
   // ---------------- 2 · trend: conversion or TAT
   const trend = state.p1Trend === "tat" ? "tat" : "conv";
@@ -107,7 +105,7 @@ export function render(main, { data, state, setState, ctx }) {
   } else {
     const labels = [], p50 = [], p90 = [];
     const push2 = (lbl, r) => { const t = M.hotoToInstall(data, p2r, r); labels.push(lbl); p50.push(t.count >= 20 ? t.p50 : null); p90.push(t.count >= 20 ? t.p90 : null); };
-    if (grain === "dod") for (let d = last - 29; d <= last; d++) push2(fmtDay(d).slice(0, 6), [d, d]);
+    if (grain === "dod") for (let d = last - (daySpanOf(state) - 1); d <= last; d++) push2(fmtDay(d).slice(0, 6), [d, d]);
     else if (grain === "wow") for (let w = 11; w >= 0; w--) { const b = last - 7 * w, a = b - 6; push2(`${fmtDay(a).slice(0, 6)}–${fmtDay(b).slice(0, 6)}`, [a, b]); }
     else for (const k of monthsBetween(data.meta.windows.YTD[0], last)) { const [a, b] = monthBounds(k); push2(monthLabel(k) + (b > last ? " (MTD)" : ""), [a, Math.min(b, last)]); }
     chart = lineChart(labels, [{ label: "P50", data: p50, color: "--series-1" }, { label: "P90", data: p90, color: "--series-2" }], { yFormat: (v) => `${v} d`, height: 290 });
@@ -116,7 +114,8 @@ export function render(main, { data, state, setState, ctx }) {
   main.append(block(2, "Conversion and speed over time", note,
     box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start", gap: "10px" } }, [
       segmented([["conv", "Conversion (M0 / M1 / M2)"], ["tat", "HOTO → install TAT"]], trend, (v) => setState({ p1Trend: v }), "Trend"),
-      trend === "tat" ? segmented([["mom", "Month"], ["wow", "Week"], ["dod", "Day"]], grain, (v) => setState({ p1Grain: v }), "Grain") : null]), chart])));
+      trend === "tat" ? segmented([["mom", "Month"], ["wow", "Week"], ["dod", "Day"]], grain, (v) => setState({ p1Grain: v }), "Grain") : null,
+      trend === "tat" && grain === "dod" ? daySpanSwitch(state, setState) : null]), chart])));
 
   // ---------------- 3 · HOTO-day skew (last 3 full months of HOTOs)
   const skewMonths = [shiftMonth(ctx.key, -3), shiftMonth(ctx.key, -2), shiftMonth(ctx.key, -1)];
@@ -174,20 +173,20 @@ export function render(main, { data, state, setState, ctx }) {
   const pendSm = M.p1Pending(data, { ...state, hideCancelled: false }).filter((x) => { const s = label(f, "state", x[pci.state]); return s === "active" || (holdOn && s === "on-hold"); });
   const yard = M.stageP90s(data, ctx);
   const stageOf = (x) => label(f, "next_stage", x[pci.next_stage]);
-  const late = (x) => { const b = yard.get(stageOf(x)); return b != null && x[pci.days_since_hoto] > b; };
+  const late = push.isStuck;  // same rule as the Stuck counts
   const omsOf = (x) => { const v = label(f, "status", x[pci.status]); return v && v !== "—" ? v : "No status"; };
   main.append(block(5, "Where HOTOs wait: cluster × stage", `${fmtInt(pendSm.length)} handed over, not installed (${holdOn ? "active + on-hold" : "active"}) · live · late = past the stage's limit (${R})`,
     el("div", { class: "card-actions", style: { marginBottom: "10px", justifyContent: "flex-start", gap: "10px" } }, [
       segmented([["ours", "Our stages"], ["oms", "OMS status"]], view, (v) => setState({ p1StageView: v }), "Stage view"),
       segmented([["active", "Active"], ["hold", "Active + on-hold"]], holdOn ? "hold" : "active", (v) => setState({ stageHold: v === "hold" }), "Projects")]),
-    box(stageMatrix({ items: pendSm, groupOf: (x) => label(f, "cluster", x[pci.cluster]), late, onCell: openPend, lateWord: `past ${R}`,
+    box(stageMatrix({ items: pendSm, groupOf: (x) => label(f, "cluster", x[pci.cluster]), late, onCell: (xs, title) => openPend(title, xs), lateWord: `past ${R}`,
       stageOf: view === "oms" ? omsOf : stageOf, order: view === "oms" ? OMS_ORDER : stages.map((s) => s.name),
       colGroups: view === "oms" ? null : RTI_GROUPS, colLabel: (s) => s.replace(" (P1 collected / RFD)", "") }))));
 
   // ---------------- 6 · not-installed list
   const pipe = M.p1Pending(data, state);
   main.append(block(6, "Not installed: project list", `${fmtInt(pipe.length)} projects · live · oldest HOTO first${state.hideCancelled ? " · active only" : " · active, on-hold and seeking cancellation"}`,
-    box(projectList(pendList.cols, [...pipe].sort((a, b) => b[pci.days_since_hoto] - a[pci.days_since_hoto]).map(pendList.row), { searchKeys: pendList.cols.filter((x) => !x.num).map((x) => x.key), sortKey: "days", sortDir: -1, filename: "hoto_to_install_pipeline.csv" }))));
+    box(projectList(lateCols, [...pipe].sort((a, b) => b[pci.days_since_hoto] - a[pci.days_since_hoto]).map(lateRow), { searchKeys: pendList.cols.filter((x) => !x.num).map((x) => x.key), sortKey: "days", sortDir: -1, filename: "hoto_to_install_pipeline.csv" }))));
 
   // ---------------- 7 · month on month
   const convM = (k) => (rs, r) => conv(rs, r, k).pct, convB = (k) => (rs, r) => conv(rs, r, k).base, h2i = (q) => (rs, r) => M.hotoToInstall(data, rs, r)[q];

@@ -384,6 +384,7 @@ details.facet.on > summary { border-color: var(--accent); background: var(--acce
 .facet-val { color: var(--text-2); max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 details.facet.on .facet-val { color: var(--accent-ink); }
 .facet-pop { position: absolute; z-index: 40; top: calc(100% + 4px); left: 0; width: min(280px, 80vw); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); padding: 8px; }
+.facet-pop.flip { left: auto; right: 0; }  /* opens leftwards near the right edge */
 .facet-n { margin-left: auto; padding-left: 8px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 
 /* cluster x stage (D-105): count, past-P90 count, tint by share past P90 */
@@ -552,6 +553,9 @@ table.data.stage-matrix th.grp-first, table.data.stage-matrix td.grp-first { bor
 .cl-group[open] > summary::before { transform: rotate(90deg); }
 .cl-group { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); margin-bottom: 10px; }
 .cl-group .cl-body { padding: 0 10px 10px; }
+/* D-116: one cluster table with the All / BAU / Expansion switch on top */
+.cl-flat .cl-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 12px; }
+.cl-flat .cl-head .seg { flex: none; }
 .cl-sum { margin-left: auto; display: flex; gap: 14px; flex-wrap: wrap; font-weight: 400; color: var(--text-2); font-size: 12px; }
 .cl-sum b { font-family: var(--font-num); font-weight: 500; color: var(--text); }
 .split-cell { font-variant-numeric: tabular-nums; }

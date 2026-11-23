@@ -1,32 +1,25 @@
 // # of HOTOs V3 (D-110). HOTO = project.sales_handover_datetime (E-02, OQ-61). MOP per cluster from the monthly Install Plan
 // sheet (D-72). BAU vs Expansion = the 14 expansion clusters (D-77). 10-day buckets 1-10 / 11-20 / 21-end (G-03).
 // No Needs action here: the page opens on the cluster table vs plan.
-//  1. HOTOs vs plan by cluster: MOP this month, AOP FY27 so far (AOP pending), each split BAU / Expansion (collapsible)
+//  1. HOTOs vs plan by cluster: MOP this month, AOP FY27 so far (AOP pending), one list with an All / BAU / Expansion switch (D-116)
 //  2. Actual vs target: month / week / day toggle
 //  3. Cluster split: lane, payment, permits (counts and shares, no colouring)
 //  4. 10-day view
-//  5. Where this month's and older HOTOs wait: cluster x stage, Pre-RTI / RTI / Post-RTI groups (collapsible)
+// The cluster x stage view lives on HOTO -> Installation only (D-117).
 // The old page (welcome-call mismatch, hidden by D-101) is kept in docs/archive/hotos_v2.js.
-import { el, card, dataTable, segmented } from "../ui.js";
+import { el, dataTable, segmented } from "../ui.js";
 import { label, monthKey, monthBounds, monthLabel, monthsBetween, fmtDay, shiftMonth, activeFilterDims } from "../data.js";
 import { fmtInt } from "../stats.js";
 import * as M from "../metrics.js";
-import { block, openList, stageMatrix } from "../layout.js";
+import { block, openList, tierTable, daySpanOf, daySpanSwitch } from "../layout.js";
 import { comboChart } from "../charts.js";
-import { p1FactList, p1PendingList } from "../lists.js";
+import { p1FactList } from "../lists.js";
 
-const EXPANSION = new Set(["Vijayawada", "Guntur", "Bareilly", "Meerut", "Kota", "Visakhapatnam", "Salem", "Erode", "Jodhpur",
-  "Raipur", "Trichy", "Madurai", "Prayagraj", "Krishnagiri"]);  // D-77 (moves to the Config sheet Expansion_List)
 const PLAN_FILTERS = new Set(["region", "cluster"]);
 const SKIP = new Set(["", "—", "Not mapped"]);
 const box = (kids) => el("div", { class: "card" }, kids);
 const tone = (p) => (p == null ? "flat" : p >= 90 ? "good" : p >= 75 ? "warn" : "bad");
 const pctTxt = (p) => (p == null ? "–" : `${Math.round(p)}%`);
-const RTI_GROUPS = [
-  { name: "Pre-RTI", stages: ["Design approval", "Bill correction done", "Sanction (permit)", "Payment ready (P1 collected / RFD)"] },
-  { name: "RTI", stages: ["Payment 1 reflected", "ERP raised"] },
-  { name: "Post-RTI", stages: ["Installation planned", "Installation done"] },
-];
 
 export function render(main, { data, state, setState, ctx }) {
   const f = data.p1, c = f.ci, pci = f.pci, inR = M.inRange, last = ctx.last;
@@ -34,7 +27,6 @@ export function render(main, { data, state, setState, ctx }) {
   const cl = (x) => label(f, "cluster", x[c.cluster]);
   const list = p1FactList(f, (f.stages.find((s) => s.id === "F07") || f.stages.at(-1)).id);
   const openRows = (title, xs) => openList({ title, sub: `${fmtInt(xs.length)} HOTOs`, cols: list.cols, rows: xs.map(list.row), filename: `${title.replace(/\W+/g, "_").toLowerCase()}.csv` });
-  const isExp = (name) => EXPANSION.has(name);
   const countBtn = (xs, title) => (xs.length ? el("button", { type: "button", class: "link-btn", text: fmtInt(xs.length), onclick: (e) => { e.stopPropagation(); openRows(title, xs); } }) : el("span", { class: "count", text: "0" }));
 
   // ---------------- MOP for the month (plan clusters; region / cluster filters only)
@@ -58,11 +50,11 @@ export function render(main, { data, state, setState, ctx }) {
     { key: "mop", label: "MOP", num: true, fmt: (v) => (v == null ? "–" : fmtInt(v)) },
     { key: "mtd", label: "MOP MTD", num: true, tip: `Month's MOP × ${ctx.dayN}/${ctx.days} days`, fmt: (v) => (v == null ? "–" : fmtInt(Math.round(v))) },
     { key: "act", label: "HOTOs MTD", num: true, fmt: (v, r) => (r.footer ? fmtInt(v) : countBtn(r.xs, `${r.name} · HOTOs ${ctx.curText}`)) },
-    { key: "ach", label: "Achieved", num: true, tip: "HOTOs MTD ÷ MOP MTD", fmt: (v) => (v == null ? "–" : el("span", { class: `pill ${tone(v)}`, text: pctTxt(v) })) },
+    { key: "ach", label: "Achieved MTD", num: true, tip: "HOTOs MTD ÷ MOP MTD", fmt: (v) => (v == null ? "–" : el("span", { class: `pill ${tone(v)}`, text: pctTxt(v) })) },
     { key: "lm", label: "LMTD", num: true, fmt: fmtInt },
     { key: "dl", label: "vs LMTD", num: true, fmt: (v, r) => { const d = M.delta(r.act, r.lm, "count", "up"); return d ? el("span", { class: `delta ${d.tone}`, text: `${d.arrow} ${d.text}` }) : "–"; } },
     { key: "rr", label: "Run rate / day", num: true, fmt: (v) => v.toFixed(1) },
-    { key: "need", label: "Needs / day", num: true, fmt: (v) => (v == null ? "–" : v.toFixed(1)) },
+    { key: "need", label: "Required Run Rate", num: true, tip: "(MOP − HOTOs MTD) ÷ days left in the month: HOTOs needed per day to reach the MOP", fmt: (v) => (v == null ? "–" : v.toFixed(1)) },
     { key: "yday", label: `Yesterday`, num: true, fmt: fmtInt },
   ];
   const totalOf = (rs, name) => {
@@ -73,28 +65,19 @@ export function render(main, { data, state, setState, ctx }) {
     t.ach = t.mtd ? (100 * actPlan) / t.mtd : null; t.rr = t.act / Math.max(1, ctx.dayN); t.need = t.mop == null ? null : Math.max(0, (t.mop - actPlan) / left);
     return t;
   };
-  const fold = (title, rs, cols, total, sumParts, open = true) => {
-    const d = el("details", { class: "cl-group", open }, [
-      el("summary", {}, [el("span", { text: title }), el("span", { class: "count", text: `${rs.length} clusters` }), el("span", { class: "cl-sum" }, sumParts)]),
-      el("div", { class: "cl-body" }, dataTable(cols, rs, { sortKey: cols[3] ? cols[3].key : null, sortDir: -1, maxHeight: 520, footer: total })),
-    ]);
-    return d;
-  };
   const mopRows = clusters.map(mopRow);
   const mopSum = (t) => [el("span", {}, ["HOTOs ", el("b", { text: fmtInt(t.act) })]), t.mtd != null ? el("span", {}, ["MOP MTD ", el("b", { text: fmtInt(Math.round(t.mtd)) })]) : null,
     t.ach != null ? el("span", { class: `pill ${tone(t.ach)}`, text: `${pctTxt(t.ach)} achieved` }) : null];
-  const bauRows = mopRows.filter((r) => !isExp(r.name)), expRows = mopRows.filter((r) => isExp(r.name));
-  const bauT = totalOf(bauRows, "BAU"), expT = totalOf(expRows, "Expansion"), allT = totalOf(mopRows, "All clusters");
+  const allT = totalOf(mopRows, "All clusters");
 
   // AOP table: clusters by month, FY27 so far (AOP targets pending)
   const fyFrom = data.meta.windows.YTD[0], months = monthsBetween(fyFrom, last);
   const ytdRows = rows.filter((x) => inR(x[c.hoto_day], [fyFrom, last]));
   const aopRow = (name) => { const xs = ytdRows.filter((x) => cl(x) === name), r = { name, ytd: xs.length }; for (const k of months) r[k] = xs.filter((x) => monthKey(x[c.hoto_day]) === k).length; return r; };
   const aopCols = [{ key: "name", label: "Cluster" }, ...months.map((k) => ({ key: k, label: monthLabel(k), num: true, fmt: fmtInt })),
-    { key: "ytd", label: "FY27 YTD", num: true, fmt: fmtInt }, { key: "aop", label: "AOP YTD", num: true, fmt: () => "–" }, { key: "aopPct", label: "Achieved", num: true, fmt: () => "–" }];
+    { key: "ytd", label: "FY27 YTD", num: true, fmt: fmtInt }, { key: "aop", label: "AOP YTD", num: true, fmt: () => "–" }, { key: "aopPct", label: "Achieved YTD", num: true, fmt: () => "–" }];
   const aopTotal = (rs, name) => { const t = { footer: true, name, ytd: rs.reduce((a, r) => a + r.ytd, 0) }; for (const k of months) t[k] = rs.reduce((a, r) => a + r[k], 0); return t; };
   const aopRows = clusters.map(aopRow);
-  const aopBau = aopRows.filter((r) => !isExp(r.name)), aopExp = aopRows.filter((r) => isExp(r.name));
   const aopSum = (t) => [el("span", {}, ["FY27 YTD ", el("b", { text: fmtInt(t.ytd) })]), el("span", { class: "pill flat", text: "AOP sheet pending" })];
 
   const tab = state.hotoPlanTab === "aop" ? "aop" : "mop";
@@ -102,12 +85,10 @@ export function render(main, { data, state, setState, ctx }) {
     ? el("div", {}, [
       el("div", { class: "count", style: { margin: "0 0 8px" }, text: planMonth && !otherFilters.length ? `${ctx.curText} · ${ctx.curRange} · All clusters: ${fmtInt(allT.act)} HOTOs${allT.mtd != null ? ` · MOP MTD ${fmtInt(Math.round(allT.mtd))} (plan clusters) · ${pctTxt(allT.ach)} achieved` : ""}`
         : otherFilters.length ? "MOP is per cluster: clear the lane / payment / COM / SOH / ZOH / cell filters to compare with it." : `No MOP for ${ctx.curText}; actuals only.` }),
-      fold("BAU clusters", bauRows, mopCols, bauT, mopSum(bauT), true),
-      expRows.length ? fold("Expansion clusters", expRows, mopCols, expT, mopSum(expT), false) : null])
+      tierTable({ rows: mopRows, cols: mopCols, totalOf, sumParts: mopSum, tier: state.tier, onTier: (v) => setState({ tier: v }), sortKey: "act", sortDir: -1 })])
     : el("div", {}, [
       el("div", { class: "count", style: { margin: "0 0 8px" }, text: `FY27 so far (${fmtDay(fyFrom)} – ${fmtDay(last)}) · AOP columns fill in once the AOP sheet is shared` }),
-      fold("BAU clusters", aopBau, aopCols, aopTotal(aopBau, "BAU"), aopSum(aopTotal(aopBau, "BAU")), true),
-      aopExp.length ? fold("Expansion clusters", aopExp, aopCols, aopTotal(aopExp, "Expansion"), aopSum(aopTotal(aopExp, "Expansion")), false) : null]);
+      tierTable({ rows: aopRows, cols: aopCols, totalOf: aopTotal, sumParts: aopSum, tier: state.tier, onTier: (v) => setState({ tier: v }), sortKey: "ytd", sortDir: -1 })]);
   main.append(block(1, "HOTOs vs plan by cluster", tab === "mop" ? "This month against the HOTO MOP · click a count for its HOTOs" : "FY27 so far, month on month, against the AOP",
     el("div", { class: "card-actions", style: { marginBottom: "10px", justifyContent: "flex-start" } }, [
       segmented([["mop", "MOP · this month"], ["aop", "AOP · FY27 so far"]], tab, (v) => setState({ hotoPlanTab: v }), "Plan")]),
@@ -127,7 +108,7 @@ export function render(main, { data, state, setState, ctx }) {
   const byDay = new Map(); for (const x of scoped) { const d = x[c.hoto_day]; if (d != null) byDay.set(d, (byDay.get(d) || 0) + 1); }
   let labels = [], act = [], tgt = [];
   if (grain === "dod") {
-    for (let d = last - 29; d <= last; d++) { labels.push(fmtDay(d).slice(0, 6)); act.push(byDay.get(d) || 0); const t = dayTarget(d); tgt.push(t == null ? null : Math.round(t)); }
+    for (let d = last - (daySpanOf(state) - 1); d <= last; d++) { labels.push(fmtDay(d).slice(0, 6)); act.push(byDay.get(d) || 0); const t = dayTarget(d); tgt.push(t == null ? null : Math.round(t)); }
   } else if (grain === "wow") {
     // weeks ending on the last complete day, 12 weeks
     for (let w = 11; w >= 0; w--) {
@@ -145,7 +126,7 @@ export function render(main, { data, state, setState, ctx }) {
   const tgtSum = tgt.filter((v) => v != null).length;
   main.append(block(2, "Actual vs target", `${planClusters && planClusters.size ? `${planClusters.size} plan clusters` : "All clusters"} · bars = HOTOs, dashed line = MOP (${grain === "dod" ? "per day" : grain === "wow" ? "per week" : "per month, to date for this month"}) · AOP line once the sheet is shared`,
     box([
-      el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"]], grain, (v) => setState({ hotoGrain: v }), "Grain")]),
+      el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"]], grain, (v) => setState({ hotoGrain: v }), "Grain"), grain === "dod" ? daySpanSwitch(state, setState) : null]),
       comboChart(labels, { label: "HOTOs", data: act, color: "--series-1" }, tgtSum ? { label: "MOP target", data: tgt, color: "--series-2" } : null, { yFormat: (v) => fmtInt(v), height: 290 }),
       tgtSum ? null : el("div", { class: "count", text: "No MOP for these periods yet (the Install Plan sheet is loaded month by month)." }),
     ])));
@@ -192,19 +173,4 @@ export function render(main, { data, state, setState, ctx }) {
       { key: "b2", label: "Days 21–end", num: true, fmt: bCell(2) }, { key: "total", label: "Month", num: true, fmt: fmtInt },
       { key: "mop", label: "MOP (plan clusters)", num: true, fmt: (v) => (v == null ? "–" : fmtInt(v)) }],
     tenRows.map((r) => ({ ...r, b0: r.b[0].length, b1: r.b[1].length, b2: r.b[2].length })).reverse(), { maxHeight: 420 }))));
-
-  // ---------------- 5 · cluster x stage, Pre-RTI / RTI / Post-RTI
-  const holdOn = !!state.stageHold;
-  const pend = M.p1Pending(data, { ...state, hideCancelled: false }).filter((x) => { const s = label(f, "state", x[pci.state]); return s === "active" || (holdOn && s === "on-hold"); });
-  const yard = M.stageP90s(data, ctx);
-  const stageOf = (x) => label(f, "next_stage", x[pci.next_stage]);
-  const late = (x) => { const b = yard.get(stageOf(x)); return b != null && x[pci.days_since_hoto] > b; };
-  const plist = p1PendingList(f);
-  main.append(block(5, "Where HOTOs wait: cluster × stage", `${fmtInt(pend.length)} handed over, not installed (${holdOn ? "active + on-hold" : "active"}) · live · click a group heading for its stages`,
-    el("div", { class: "card-actions", style: { marginBottom: "10px", justifyContent: "flex-start" } }, [
-      segmented([["active", "Active"], ["hold", "Active + on-hold"]], holdOn ? "hold" : "active", (v) => setState({ stageHold: v === "hold" }), "Projects")]),
-    card("Cluster × stage", "Pre-RTI = waiting for design approval, bill correction, sanction or payment ready · RTI = all three done, waiting for Payment 1 reflected or ERP · Post-RTI = waiting for installation planning or installation · late = past the stage's limit in days from HOTO (stuck rule in the top bar, India)",
-      stageMatrix({ items: pend, groupOf: (x) => label(f, "cluster", x[pci.cluster]), stageOf, late, order: f.stages.map((s) => s.name), colGroups: RTI_GROUPS,
-        colLabel: (s) => s.replace(" (P1 collected / RFD)", ""), lateWord: `past ${M.stuckShort(ctx)}`,
-        onCell: (xs, title) => openList({ title, sub: `${fmtInt(xs.length)} projects · live`, cols: plist.cols, rows: [...xs].sort((a, b) => b[pci.days_since_hoto] - a[pci.days_since_hoto]).map(plist.row), filename: `${title.replace(/\W+/g, "_").toLowerCase()}.csv` }) }))));
 }

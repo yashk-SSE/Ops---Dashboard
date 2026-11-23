@@ -10,12 +10,10 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, bucketOf, matcher, monthBounds, monthLabel, monthsBetween } from "../data.js";
 import { fmtInt, tatSummary } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, foldTable, openList, stageMatrix } from "../layout.js";
+import { momTables, block, tierTable, openList, stageMatrix } from "../layout.js";
 import { comboChart } from "../charts.js";
 import { subsidyList } from "../lists.js";
 
-const EXPANSION = new Set(["Vijayawada", "Guntur", "Bareilly", "Meerut", "Kota", "Visakhapatnam", "Salem", "Erode", "Jodhpur",
-  "Raipur", "Trichy", "Madurai", "Prayagraj", "Krishnagiri"]);  // D-77
 const SKIP = new Set(["", "—", "Not mapped"]);
 const VSP = "Vendor Selection Pending";
 const box = (kids) => el("div", { class: "card" }, kids);
@@ -30,7 +28,9 @@ export function render(main, { data, state, setState, ctx }) {
   const inStage = (x) => (x[c.stage_day] == null ? null : asOf - x[c.stage_day]);
   const back = rows.filter((x) => x[c.in_backlog]), oldNo = rows.filter((x) => x[c.old_no_status]);
   const list = subsidyList(f, asOf);
-  const openRows = (title, xs) => openList({ title, sub: `${fmtInt(xs.length)} projects`, cols: list.cols, rows: [...xs].sort((a, b) => (inStage(b) ?? -1) - (inStage(a) ?? -1)).map(list.row), filename: `${title.replace(/\W+/g, "_").toLowerCase()}.csv` });
+  const lateCols = [...list.cols, { key: "late", label: "Late", tip: "More than 30 days in the same subsidy stage" }];
+  const lateRow = (x) => ({ ...list.row(x), late: inStage(x) > 30 ? "Late (over 30 days in stage)" : "Not late" });
+  const openRows = (title, xs) => openList({ title, sub: `${fmtInt(xs.length)} projects`, cols: lateCols, rows: [...xs].sort((a, b) => (inStage(b) ?? -1) - (inStage(a) ?? -1)).map(lateRow), filename: `${title.replace(/\W+/g, "_").toLowerCase()}.csv` });
   const btn = (xs, title) => (xs.length ? el("button", { type: "button", class: "link-btn", text: fmtInt(xs.length), onclick: (e) => { e.stopPropagation(); openRows(title, xs); } }) : el("span", { class: "count", text: "0" }));
   // disbursal dates are reliable from Oct 2026 only (status history bulk-loaded before, D-87)
   const reliableFrom = monthBounds((f.history_reliable_from || "2026-10-01").slice(0, 7))[0];
@@ -65,11 +65,10 @@ export function render(main, { data, state, setState, ctx }) {
   };
   const sumParts = (t) => [el("span", {}, ["Backlog ", el("b", { text: fmtInt(t.nB) })]), el("span", {}, ["> 30 d ", el("b", { text: fmtInt(t.nO) })]),
     el("span", {}, ["Disbursed ", el("b", { text: t.nD == null ? "–" : fmtInt(t.nD) })])];
-  const bau = cRows.filter((r) => !EXPANSION.has(r.name)), exp = cRows.filter((r) => EXPANSION.has(r.name)), allT = totalOf(cRows, "All clusters");
+  const allT = totalOf(cRows, "All clusters");
   main.append(block(1, "Subsidy backlog by cluster", `${ctx.curText} · ${ctx.curRange} · backlog live · disbursals as OMS recorded them (from Oct 2026) · click a count for its projects`,
     el("div", { class: "count", style: { margin: "0 0 8px" }, text: `All clusters: ${fmtInt(allT.nB)} in backlog · ${fmtInt(allT.nO)} more than 30 days in their stage · ${fmtInt(allT.nV)} vendor selection pending · ${allT.nD == null ? "–" : fmtInt(allT.nD)} disbursed this month · ${fmtInt(oldNo.length)} with no status (commissioned before Oct, not in the backlog)` }),
-    foldTable("BAU clusters", bau, cols, totalOf(bau, "BAU"), sumParts(totalOf(bau, "BAU")), { open: true, sortKey: "nB", sortDir: -1 }),
-    exp.length ? foldTable("Expansion clusters", exp, cols, totalOf(exp, "Expansion"), sumParts(totalOf(exp, "Expansion")), { open: false, sortKey: "nB", sortDir: -1 }) : null));
+    tierTable({ rows: cRows, cols, totalOf, sumParts, tier: state.tier, onTier: (v) => setState({ tier: v }), sortKey: "nB", sortDir: -1 })));
 
   // ---------------- 2 · trend: disbursed vs commissioned
   const grain = state.subGrain === "mom" ? "mom" : "wow";
@@ -95,7 +94,7 @@ export function render(main, { data, state, setState, ctx }) {
 
   // ---------------- 4 · cluster x stage
   main.append(block(4, "Where the backlog sits: cluster × stage", `${fmtInt(back.length)} in backlog · live · stages in order (Vendor selection → PCR → DISCOM inspection → Redeem → Disbursal) · late = more than 30 days in the stage`,
-    box(stageMatrix({ items: back, groupOf: cl, stageOf: stg, order: f.stages, late: (x) => inStage(x) > 30, onCell: openRows, lateWord: "over 30 days" }))));
+    box(stageMatrix({ items: back, groupOf: cl, stageOf: stg, order: f.stages, late: (x) => inStage(x) > 30, onCell: (xs, title) => openRows(title, xs), lateWord: "over 30 days" }))));
 
   // ---------------- 5 · list (backlog, or the old no-status projects)
   const which = state.subList === "old" ? "old" : "back";

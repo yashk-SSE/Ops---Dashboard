@@ -10,7 +10,7 @@
 //           value(rows, range) -> number|null, base?(rows, range) -> sample size, minBase?, kpi?, mom?, rank?, foot? }
 // Sources: { [src]: { file, ci, rows } }  (rows already filtered by the global filters)
 import { el, card, segmented, metricCard, dataTable, downloadCSV, projectList } from "./ui.js";
-import { monthKey, monthLabel, monthBounds, shiftMonth, fmtDay, label } from "./data.js";
+import { monthKey, monthLabel, monthBounds, shiftMonth, fmtDay, label, isExpansion } from "./data.js";
 import { delta } from "./metrics.js";
 import { fmtInt, fmtPct } from "./stats.js";
 
@@ -299,7 +299,7 @@ Rule: ${d.rule}`,
 // ---------------------------------------------------------------- pace (D-94)
 // items: [{label, mtd, today?, target?, targetToDate?, stretch?, lastFull, lastSame, onClick?, sub?}]
 export function pace(items, ctx) {
-  // Reference layout (D-107): title · big number · "Plan MTD: X · Y% achieved" · bar · "±% vs N LMTD · run rate" · "Month plan · needs/day".
+  // Reference layout (D-107): title · big number · "Plan MTD: X · Y% achieved" · bar · "±% vs N LMTD · run rate" · "Month plan · required run rate".
   // Plan cards: achieved = done ÷ plan MTD (the plan's daily curve to yesterday; straight line when the plan has no curve, e.g. MOP).
   // No-plan cards: the yardstick is last month to the same day (LMTD), D-106. Projection and the rest are in the tooltip.
   return el("div", { class: "grid pace-grid" }, items.map((it) => {
@@ -323,7 +323,7 @@ export function pace(items, ctx) {
       hasPlan ? `Month plan (base) ${fmtInt(it.target)}${it.stretch ? ` · stretch (aggressive) ${fmtInt(it.stretch)}` : ""} · ${fmtInt(Math.round((100 * it.mtd) / it.target))}% of the month done` : `${ctx.prevLabel} full month ${fmtInt(it.lastFull)} · ${goal ? Math.round((100 * it.mtd) / goal) : "–"}% of it done`,
       `Same days last month (LMTD): ${fmtInt(it.lastSame)}${d ? ` · ${d.arrow} ${d.text}` : ""}`,
       `Run rate ${rr.toFixed(1)}/day · projected month-end ${fmtInt(proj)}${goal ? ` (${Math.round((100 * proj) / goal)}% of ${hasPlan ? "plan" : ctx.prevLabel})` : ""}${yard ? " = done ÷ yardstick to date × month total" : ""}`,
-      need != null ? `Needs ${need.toFixed(1)}/day for the remaining ${left} days to reach ${hasPlan ? "the plan" : `${ctx.prevLabel}'s total`}` : ""].filter(Boolean).join("\n");
+      need != null ? `Required run rate ${need.toFixed(1)}/day for the remaining ${left} days to reach ${hasPlan ? "the plan" : `${ctx.prevLabel}'s total`}` : ""].filter(Boolean).join("\n");
     const achTxt = ach == null ? "–" : `${Math.round(ach)}%`;
     const node = el("div", { class: `card pace2${it.onClick ? " linked" : ""}`, "data-tip": tip }, [
       el("div", { class: "p2-title" }, [it.label, it.sub ? el("span", { text: ` · ${it.sub}` }) : null]),
@@ -335,7 +335,7 @@ export function pace(items, ctx) {
       el("div", { class: "p2-line" }, hasPlan
         ? [el("span", { class: "nowrap" }, [d ? el("span", { class: `delta ${d.tone}`, text: `${d.arrow} ${d.text}` }) : null, ` vs ${fmtInt(it.lastSame)} LMTD`]), el("span", { class: "nowrap", text: `· run rate ${rr.toFixed(1)}/day` })]
         : [`Run rate ${rr.toFixed(1)}/day`]),
-      el("div", { class: "p2-line muted", text: hasPlan ? `Month plan ${fmtInt(it.target)} · needs ${need.toFixed(1)}/day` : `${ctx.prevLabel} full month ${fmtInt(it.lastFull)} · needs ${need != null ? need.toFixed(1) : "–"}/day` }),
+      el("div", { class: "p2-line muted", text: hasPlan ? `Month plan ${fmtInt(it.target)} · required run rate ${need.toFixed(1)}/day` : `${ctx.prevLabel} full month ${fmtInt(it.lastFull)} · required run rate ${need != null ? need.toFixed(1) : "–"}/day` }),
     ]);
     if (it.onClick) { node.setAttribute("role", "link"); node.setAttribute("tabindex", "0"); node.addEventListener("click", it.onClick); }
     return node;
@@ -544,6 +544,37 @@ export function stageMatrix({ items, stageOf, groupOf, late, order = [], onCell,
     el("span", { text: `· all: ${pctTxt(items.length, allLate)} late · cells under 5 projects not shaded · ${gdefs ? "click a group heading to show its stages · " : ""}click any number for its list` }),
   ]);
   return el("div", {}, [legend, holder]);
+}
+
+// ---------------------------------------------------------------- day charts: last 30 / 60 / 90 days (D-117)
+export const DAY_SPANS = [30, 60, 90];
+/** How many days the Day view of a trend chart shows (shared state, default 30). */
+export const daySpanOf = (state) => (DAY_SPANS.includes(Number(state.daySpan)) ? Number(state.daySpan) : 30);
+/** The 30 / 60 / 90 days switch shown next to a trend's grain switch while the Day view is on. */
+export function daySpanSwitch(state, setState) {
+  return segmented(DAY_SPANS.map((n) => [String(n), `${n} days`]), String(daySpanOf(state)), (v) => setState({ daySpan: Number(v) }), "Days shown");
+}
+
+// ---------------------------------------------------------------- cluster table with a tier switch (D-116)
+/**
+ * One sortable cluster table with an All / BAU / Expansion switch above it (replaced the BAU / Expansion folds, D-116).
+ * The pinned total row and the summary on the right follow the switch. `tier` is the shared state value: "all" | "bau" | "exp".
+ * totalOf(rows, name) builds the total row; sumParts(total) the summary spans.
+ */
+export function tierTable({ rows, cols, totalOf, sumParts = () => [], tier = "all", onTier, sortKey = null, sortDir = -1 }) {
+  const t = tier === "bau" || tier === "exp" ? tier : "all";
+  const nExp = rows.filter((r) => isExpansion(r.name)).length, nBau = rows.length - nExp;
+  const shown = t === "all" ? rows : rows.filter((r) => (t === "exp") === isExpansion(r.name));
+  const total = totalOf(shown, t === "all" ? "All clusters" : t === "bau" ? "BAU" : "Expansion");
+  return el("div", { class: "cl-group cl-flat" }, [
+    el("div", { class: "cl-head" }, [
+      segmented([["all", `All · ${rows.length}`], ["bau", `BAU · ${nBau}`], ["exp", `Expansion · ${nExp}`]], t, onTier, "Cluster tier"),
+      el("span", { class: "cl-sum" }, sumParts(total)),
+    ]),
+    el("div", { class: "cl-body" }, shown.length
+      ? dataTable(cols, shown, { sortKey, sortDir, maxHeight: 560, footer: total })
+      : el("div", { class: "empty", text: "No clusters in this tier for the current filters." })),
+  ]);
 }
 
 // ---------------------------------------------------------------- folded cluster table (D-110 / D-111)

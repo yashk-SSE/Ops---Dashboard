@@ -7,6 +7,12 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 
 export const FILTER_DIMS = ["region", "cluster", "cell", "payment_lane", "lane", "zoh", "soh", "com"];
 
+// Expansion clusters (D-77; moves to the Config sheet's Expansion_List). Every other cluster is BAU. The cluster tables
+// show All / BAU / Expansion with the switch above them (D-116).
+export const EXPANSION = new Set(["Vijayawada", "Guntur", "Bareilly", "Meerut", "Kota", "Visakhapatnam", "Salem", "Erode", "Jodhpur",
+  "Raipur", "Trichy", "Madurai", "Prayagraj", "Krishnagiri"]);
+export const isExpansion = (name) => EXPANSION.has(name);
+
 export const DIM_LABELS = {
   region: "Region", cluster: "Cluster", city: "City", cell: "Cell", lane: "Lane", payment_lane: "Payment lane",
   com: "COM", soh: "SOH", zoh: "ZOH", state: "State", ic: "IC", vendor: "Vendor",

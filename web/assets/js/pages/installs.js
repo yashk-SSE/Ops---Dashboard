@@ -9,14 +9,13 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, monthKey, monthBounds, monthLabel, monthsBetween, activeFilterDims } from "../data.js";
 import { fmtInt } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, foldTable, openList } from "../layout.js";
+import { momTables, block, tierTable, openList, daySpanOf, daySpanSwitch } from "../layout.js";
 import { lineChart, comboChart } from "../charts.js";
 import { p2FactList } from "../lists.js";
 import { pushModel, openClusterPanel, countBtn } from "../push.js";
 
 const PLAN_FILTERS = new Set(["region", "cluster"]);
 const SKIP = new Set(["", "—", "Not mapped"]);
-const GROUP_ORDER = ["Mature OA", "OA since Sep", "OA from Oct"];
 const tone = (p) => (p == null ? "flat" : p >= 90 ? "good" : p >= 75 ? "warn" : "bad");
 const pctTxt = (p) => (p == null ? "–" : `${Math.round(p)}%`);
 const box = (kids) => el("div", { class: "card" }, kids);
@@ -67,7 +66,7 @@ export function render(main, { data, state, setState, ctx }) {
   const panelFor = (r) => openClusterPanel(r.name, push, data, { planRow: r.plan != null ? { mtd: r.mtd, exp: r.exp, plan: r.plan, need: r.need, rate: r.rate } : null,
     goToP1: () => { setState({ filters: { cluster: [r.name] } }); location.hash = "#/p1"; } });
 
-  // ---------------- 1 · cluster table, folded by plan group
+  // ---------------- 1 · cluster table: one list with the plan group as a column, All / BAU / Expansion switch (D-116)
   const ageCell = (k) => (v, r) => {
     if (r.footer) return r.ageExp ? `${fmtInt(r[`a${k}`])} / ${fmtInt(Math.round(r.ageExp[k]))}` : fmtInt(r[`a${k}`]);
     const done = r.age[k].length, exp = r.ageExp ? r.ageExp[k] : null, p = exp ? (100 * done) / exp : null;
@@ -77,13 +76,14 @@ export function render(main, { data, state, setState, ctx }) {
   const cols = [
     { key: "name", label: "Cluster", tip: "Click a cluster for what to push: ready to install, stuck, and where its pipeline waits",
       fmt: (n, r) => (r.footer ? n : el("button", { type: "button", class: "cl-btn", text: n, onclick: (e) => { e.stopPropagation(); panelFor(r); } })) },
+    { key: "group", label: "Plan group", tip: "The install plan's cluster groups (Mature OA / OA since Sep / OA from Oct); clusters without a plan this month: Not in the plan" },
     { key: "plan", label: "Plan", num: true, tip: `The month's ${planWord} install plan`, fmt: (v) => (v == null ? "–" : fmtInt(v)) },
     { key: "exp", label: "Plan MTD", num: true, tip: `Where the ${planWord} plan's daily curve expects the cluster by the end of day ${ctx.dayN}`, fmt: (v) => (v == null ? "–" : fmtInt(Math.round(v))) },
     { key: "mtd", label: "Installs MTD", num: true, fmt: (v, r) => (r.footer ? fmtInt(v) : cntBtn(r.cur, `${r.name} · installs ${ctx.curText}`)) },
-    { key: "ach", label: "Achieved", num: true, tip: "Installs MTD ÷ plan MTD", fmt: (v) => (v == null ? "–" : el("span", { class: `pill ${tone(v)}`, text: pctTxt(v) })) },
+    { key: "ach", label: "Achieved MTD", num: true, tip: "Installs MTD ÷ plan MTD", fmt: (v) => (v == null ? "–" : el("span", { class: `pill ${tone(v)}`, text: pctTxt(v) })) },
     { key: "dl", label: "vs LMTD", num: true, tip: "Installs MTD vs the same days last month", fmt: (v, r) => { const d = M.delta(r.mtd, r.lm, "count", "up"); return d ? el("span", { class: `delta ${d.tone}`, "data-tip": `LMTD ${fmtInt(r.lm)}`, text: `${d.arrow} ${d.text}` }) : "–"; } },
     { key: "rate", label: "Run rate / day", num: true, fmt: (v) => v.toFixed(1) },
-    { key: "need", label: "Needs / day", num: true, fmt: (v) => (v == null ? "–" : v.toFixed(1)) },
+    { key: "need", label: "Required Run Rate", num: true, tip: "(Plan − installs MTD) ÷ days left in the month: installs needed per day to reach the plan", fmt: (v) => (v == null ? "–" : v.toFixed(1)) },
     { key: "a0", label: "M0", num: true, tip: "Installs of this month's HOTOs: done / expected by today on the plan's M0 curve", fmt: ageCell(0) },
     { key: "a1", label: "M1", num: true, tip: "Installs of last month's HOTOs: done / expected by today", fmt: ageCell(1) },
     { key: "a2", label: "M2+", num: true, tip: "Installs of older HOTOs: done / expected by today", fmt: ageCell(2) },
@@ -108,14 +108,12 @@ export function render(main, { data, state, setState, ctx }) {
   const sumParts = (t) => [el("span", {}, ["Installs ", el("b", { text: fmtInt(t.mtd) })]), t.exp != null ? el("span", {}, ["Plan MTD ", el("b", { text: fmtInt(Math.round(t.exp)) })]) : null,
     t.ach != null ? el("span", { class: `pill ${tone(t.ach)}`, text: `${pctTxt(t.ach)} achieved` }) : null,
     el("span", {}, ["Ready ", el("b", { text: fmtInt(t.ready) })]), el("span", {}, ["Stuck ", el("b", { text: fmtInt(t.stuck) })])];
-  const groups = [...GROUP_ORDER, ...new Set(cRows.map((r) => r.group).filter((g) => !GROUP_ORDER.includes(g) && g !== "Not in the plan")), "Not in the plan"];
   const planRowsAll = cRows.filter((r) => r.plan != null), allT = totalOf(cRows, "All clusters"), planT = totalOf(planRowsAll, "Plan clusters");
-  const folds = groups.map((g) => { const rs = cRows.filter((r) => r.group === g); return rs.length ? foldTable(g, rs, cols, totalOf(rs, g), sumParts(totalOf(rs, g)), { open: g !== "Not in the plan", sortKey: g === "Not in the plan" ? "mtd" : "ach", sortDir: g === "Not in the plan" ? -1 : 1, note: g === "Not in the plan" ? "actuals only" : "" }) : null; }).filter(Boolean);
   const method = el("span", { class: "pill info", "data-tip": "How the plan is built (Nov26_Install_Plan_v3, Prasanna R): installs = M0 (HOTOs of the month × lane mix × lane M0 rate) + M1 (last month's HOTOs × lane M0+M1 rate − what they already installed) + M2+ (older pending pool × decay). Base rates are mostly the Aug–Oct average; aggressive = the best month since Opening Act. The daily curve follows the Aug–Oct install-day shape with Diwali factors.", text: "How the plan is built" });
   main.append(block(1, "Installations vs plan by cluster", usePlan ? `${ctx.curText} · ${ctx.curRange} · ${planWord} plan (switch at the top) · click a cluster for what to push, a count for its installs` : `${ctx.curText} · actuals only (${planMonth ? "the plan is per cluster: clear the lane / payment / COM / SOH / ZOH / cell filters" : "no install plan loaded for this month"})`,
     el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [
-      el("span", { class: "count", text: usePlan ? `All clusters: ${fmtInt(allT.mtd)} installs · plan clusters ${fmtInt(planT.mtd)} of ${fmtInt(Math.round(planT.exp || 0))} plan MTD (${pctTxt(planT.ach)} achieved) · needs ${planT.need != null ? planT.need.toFixed(1) : "–"}/day` : `All clusters: ${fmtInt(allT.mtd)} installs` }), usePlan ? method : null]),
-    ...folds));
+      el("span", { class: "count", text: usePlan ? `All clusters: ${fmtInt(allT.mtd)} installs · plan clusters ${fmtInt(planT.mtd)} of ${fmtInt(Math.round(planT.exp || 0))} plan MTD (${pctTxt(planT.ach)} achieved) · required run rate ${planT.need != null ? planT.need.toFixed(1) : "–"}/day` : `All clusters: ${fmtInt(allT.mtd)} installs` }), usePlan ? method : null]),
+    tierTable({ rows: cRows, cols, totalOf, sumParts, tier: state.tier, onTier: (v) => setState({ tier: v }), sortKey: "mtd", sortDir: -1 })));
 
   // ---------------- 2 · trend: installs vs plan (plan clusters)
   const grain = ["dod", "wow", "mom", "cum"].includes(state.instGrain) ? state.instGrain : "dod";
@@ -139,7 +137,7 @@ export function render(main, { data, state, setState, ctx }) {
       : el("div", { class: "count", text: "No plan for this month." });
   } else {
     const labels = [], act = [], tgt = [];
-    if (grain === "dod") for (let d = last - 29; d <= last; d++) { labels.push(fmtDay(d).slice(0, 6)); act.push(byDay.get(d) || 0); const t = dayTarget(d); tgt.push(t == null ? null : Math.round(t)); }
+    if (grain === "dod") for (let d = last - (daySpanOf(state) - 1); d <= last; d++) { labels.push(fmtDay(d).slice(0, 6)); act.push(byDay.get(d) || 0); const t = dayTarget(d); tgt.push(t == null ? null : Math.round(t)); }
     else if (grain === "wow") for (let w = 11; w >= 0; w--) { const b = last - 7 * w, a = b - 6; let s = 0, t = 0, has = false; for (let d = a; d <= b; d++) { s += byDay.get(d) || 0; const dt = dayTarget(d); if (dt != null) { t += dt; has = true; } } labels.push(`${fmtDay(a).slice(0, 6)}–${fmtDay(b).slice(0, 6)}`); act.push(s); tgt.push(has ? Math.round(t) : null); }
     else for (const k of monthsBetween(data.meta.windows.YTD[0], last)) { const [a, b] = monthBounds(k), to = Math.min(b, last); let s = 0, t = 0, has = false; for (let d = a; d <= to; d++) { s += byDay.get(d) || 0; const dt = dayTarget(d); if (dt != null) { t += dt; has = true; } } labels.push(monthLabel(k) + (to < b ? " (MTD)" : "")); act.push(s); tgt.push(has ? Math.round(t) : null); }
     const hasT = tgt.some((v) => v != null);
@@ -147,7 +145,7 @@ export function render(main, { data, state, setState, ctx }) {
   }
   main.append(block(2, "Installs vs plan over time", `${planSet.size ? `${planSet.size} plan clusters` : "All clusters"} · ${grain === "cum" ? "this month, cumulative" : "bars = installs, dashed = the plan (its daily curve)"} · plan only for months that have one`,
     box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [
-      segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"], ["cum", "This month, cumulative"]], grain, (v) => setState({ instGrain: v }), "Grain")]), chart])));
+      segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"], ["cum", "This month, cumulative"]], grain, (v) => setState({ instGrain: v }), "Grain"), grain === "dod" ? daySpanSwitch(state, setState) : null]), chart])));
 
   // ---------------- 3 · split: HOTO age or lane (installs this month, every cluster)
   const split = state.instSplit === "lane" ? "lane" : "age";

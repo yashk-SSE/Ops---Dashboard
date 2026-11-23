@@ -8,13 +8,11 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, bucketOf, matcher, monthBounds, monthLabel, monthsBetween } from "../data.js";
 import { fmtInt, pct, tatSummary } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, foldTable, openList } from "../layout.js";
+import { momTables, block, tierTable, openList, daySpanOf, daySpanSwitch } from "../layout.js";
 import { comboChart } from "../charts.js";
 import { escTicketList } from "../lists.js";
 
 const L3PLUS = new Set(["L3 - Founders", "L4 - Social Media", "L5 - Consumer Forum"]);
-const EXPANSION = new Set(["Vijayawada", "Guntur", "Bareilly", "Meerut", "Kota", "Visakhapatnam", "Salem", "Erode", "Jodhpur",
-  "Raipur", "Trichy", "Madurai", "Prayagraj", "Krishnagiri"]);  // D-77
 const SKIP = new Set(["", "—", "Not mapped"]);
 const box = (kids) => el("div", { class: "card" }, kids);
 const pctTxt = (p) => (p == null ? "–" : `${Math.round(p)}%`);
@@ -63,12 +61,11 @@ export function render(main, { data, state, setState, ctx }) {
     return { footer: true, name, nT: s("nT"), lm: s("lm"), nE: s("nE"), nO: s("nO"), nOE: s("nOE"), nL3: s("nL3"), nLate: s("nLate"), n15: s("n15"), p50: tatSummary(closedTat(sub, ctx.cur)).p50 };
   };
   const sumParts = (t) => [el("span", {}, ["Tickets ", el("b", { text: fmtInt(t.nT) })]), el("span", {}, ["True ", el("b", { text: fmtInt(t.nE) })]), el("span", {}, ["Open ", el("b", { text: fmtInt(t.nO) })]), el("span", {}, [`Past ${R} `, el("b", { text: fmtInt(t.nLate) })])];
-  const bau = cRows.filter((r) => !EXPANSION.has(r.name)), exp = cRows.filter((r) => EXPANSION.has(r.name)), allT = totalOf(cRows, "All clusters");
+  const allT = totalOf(cRows, "All clusters");
   const dAll = M.delta(allT.nT, allT.lm, "count", "down");
   main.append(block(1, "Escalations by cluster", `${ctx.curText} · ${ctx.curRange} · open tickets live · click a count for its tickets`,
     el("div", { class: "count", style: { margin: "0 0 8px" }, text: `All clusters: ${fmtInt(allT.nT)} tickets${dAll ? ` (${dAll.arrow} ${dAll.text} vs LMTD ${fmtInt(allT.lm)})` : ""} · ${fmtInt(allT.nE)} true escalations · ${fmtInt(allT.nO)} open (${fmtInt(allT.nOE)} true, ${fmtInt(allT.nL3)} L3–L5) · ${fmtInt(allT.nLate)} open past ${R} (${limit == null ? "–" : Math.round(limit)} d) · closure P50 ${dTxt(allT.p50)}` }),
-    foldTable("BAU clusters", bau, cols, totalOf(bau, "BAU"), sumParts(totalOf(bau, "BAU")), { open: true, sortKey: "nO", sortDir: -1 }),
-    exp.length ? foldTable("Expansion clusters", exp, cols, totalOf(exp, "Expansion"), sumParts(totalOf(exp, "Expansion")), { open: false, sortKey: "nO", sortDir: -1 }) : null));
+    tierTable({ rows: cRows, cols, totalOf, sumParts, tier: state.tier, onTier: (v) => setState({ tier: v }), sortKey: "nO", sortDir: -1 })));
 
   // ---------------- 2 · trend: raised vs closed
   const grain = ["mom", "wow", "dod"].includes(state.escGrain) ? state.escGrain : "wow";
@@ -76,11 +73,11 @@ export function render(main, { data, state, setState, ctx }) {
   for (const x of rows) { if (x[c.created_day] != null) rDay.set(x[c.created_day], (rDay.get(x[c.created_day]) || 0) + 1); if (x[c.closed_day] != null) cDay.set(x[c.closed_day], (cDay.get(x[c.closed_day]) || 0) + 1); }
   const labels = [], rs = [], cs = [];
   const addRange = (lbl, a, b) => { let n = 0, m = 0; for (let d = a; d <= b; d++) { n += rDay.get(d) || 0; m += cDay.get(d) || 0; } labels.push(lbl); rs.push(n); cs.push(m); };
-  if (grain === "dod") for (let d = last - 29; d <= last; d++) addRange(fmtDay(d).slice(0, 6), d, d);
+  if (grain === "dod") for (let d = last - (daySpanOf(state) - 1); d <= last; d++) addRange(fmtDay(d).slice(0, 6), d, d);
   else if (grain === "wow") for (let w = 11; w >= 0; w--) { const b = last - 7 * w, a = b - 6; addRange(`${fmtDay(a).slice(0, 6)}–${fmtDay(b).slice(0, 6)}`, a, b); }
   else for (const k of monthsBetween(data.meta.windows.YTD[0], last)) { const [a, b] = monthBounds(k); addRange(monthLabel(k) + (b > last ? " (MTD)" : ""), a, Math.min(b, last)); }
   main.append(block(2, "Raised vs closed over time", "Bars = tickets raised, dashed line = tickets closed · when the line sits below the bars, the open pile grows",
-    box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"]], grain, (v) => setState({ escGrain: v }), "Grain")]),
+    box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"]], grain, (v) => setState({ escGrain: v }), "Grain"), grain === "dod" ? daySpanSwitch(state, setState) : null]),
       comboChart(labels, { label: "Raised", data: rs, color: "--series-1" }, { label: "Closed", data: cs, color: "--series-2" }, { yFormat: (v) => fmtInt(v), height: 290 })])));
 
   // ---------------- 3 · split: level or issue type (tickets created this month)

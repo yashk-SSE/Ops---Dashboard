@@ -45,6 +45,8 @@ const defaults = () => ({
   p1StageView: "ours", stageHold: false,
   day: null,  // Yesterday page (D-108): null = yesterday; not restored between visits
   planMode: "base",  // D-110: install plan shown everywhere: "base" or "aggr"
+  daySpan: 30,  // D-117: days in the Day view of trend charts: 30, 60 or 90
+  tier: "all",  // D-116: cluster tables show "all", "bau" or "exp" clusters (switch above each table)
   stuckRule: "p90",  // D-111: how 'stuck' is judged everywhere: "p90" (India P90) or "p50x2" (2 x India P50)  // cluster x stage (D-105): our stages or OMS status; active only or + on-hold
 });
 

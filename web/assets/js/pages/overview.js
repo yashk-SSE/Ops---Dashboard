@@ -42,7 +42,7 @@ export function render(main, { data, state, ctx }) {
     const tip = [`${title}, ${ctx.curRange}: ${fmtInt(act)} (${rows.length} plan clusters)`,
       `${targetName} MTD ${fmtInt(Math.round(mtd))} = ${key === "inst" ? `the ${planWord} install plan's daily curve to the end of day ${ctx.dayN}` : `the month's MOP × ${ctx.dayN}/${ctx.days} days (no daily curve)`}`,
       `Achieved ${pctTxt(ach)} of ${targetName} MTD · ${pctTxt(tgt ? (100 * act) / tgt : null)} of the month's ${targetName}`,
-      `Same days last month (LMTD): ${fmtInt(lm)}`, `Run rate ${rr.toFixed(1)}/day · needs ${need.toFixed(1)}/day for the remaining ${left} days`, "Click for the cluster table"].join("\n");
+      `Same days last month (LMTD): ${fmtInt(lm)}`, `Run rate ${rr.toFixed(1)}/day · required run rate ${need.toFixed(1)}/day for the remaining ${left} days`, "Click for the cluster table"].join("\n");
     const node = el("div", { class: "card pace2 linked ov-card", role: "button", tabindex: "0", "data-tip": tip }, [
       el("div", { class: "p2-title" }, [title, el("span", { text: ` · ${unit}` })]),
       el("div", { class: "p2-value", text: fmtInt(act) }),
@@ -50,7 +50,7 @@ export function render(main, { data, state, ctx }) {
       el("div", { class: "pace-bar" }, el("i", { class: tone(ach), style: { width: `${ach == null ? 0 : Math.min(100, ach)}%` } })),
       el("div", { class: "p2-line" }, [el("span", { class: "nowrap" }, [d ? el("span", { class: `delta ${d.tone}`, text: `${d.arrow} ${d.text}` }) : null, ` vs ${fmtInt(lm)} LMTD`]),
         el("span", { class: "nowrap", text: `· run rate ${rr.toFixed(1)}/day` })]),
-      el("div", { class: "p2-line muted", text: `Month ${targetName === "Plan" ? "plan" : targetName} ${fmtInt(tgt)} · needs ${need.toFixed(1)}/day` }),
+      el("div", { class: "p2-line muted", text: `Month ${targetName === "Plan" ? "plan" : targetName} ${fmtInt(tgt)} · required run rate ${need.toFixed(1)}/day` }),
     ]);
     const open = () => openPanel({ title: `${title} vs ${targetName} by cluster`, sub: `${ctx.curText} · ${ctx.curRange} · ${targetName} MTD to the end of day ${ctx.dayN}`,
       body: dataTable([
@@ -58,7 +58,7 @@ export function render(main, { data, state, ctx }) {
         { key: "target", label: `${targetName} target`, num: true, fmt: fmtInt },
         { key: "mtd", label: `${targetName} MTD`, num: true, fmt: (v) => fmtInt(Math.round(v)) },
         { key: "act", label: "Actual", num: true, fmt: fmtInt },
-        { key: "ach", label: "Achieved", num: true, tip: `Actual ÷ ${targetName} MTD`, fmt: (v) => el("span", { class: `pill ${tone(v)}`, text: pctTxt(v) }) },
+        { key: "ach", label: "Achieved MTD", num: true, tip: `Actual ÷ ${targetName} MTD`, fmt: (v) => el("span", { class: `pill ${tone(v)}`, text: pctTxt(v) }) },
       ], rows.map((r) => ({ name: r.name, ...r[key], ach: r[key].mtd ? (100 * r[key].act) / r[key].mtd : null })),
       { sortKey: "ach", sortDir: 1, maxHeight: 640, footer: { name: "All plan clusters", target: tgt, mtd, act, ach } }) });
     node.addEventListener("click", open); node.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
@@ -103,7 +103,7 @@ export function render(main, { data, state, ctx }) {
       const tot = { name: "All clusters", ytd: 0 }; for (const k of months) { tot[k] = trows.reduce((a, r) => a + r[k], 0); tot.ytd += tot[k]; }
       openPanel({ title: `${m.title} by cluster, month on month`, sub: `FY27 so far (${fyLabel}) · ${monthLabel(months.at(-1))} to yesterday · AOP columns appear once the AOP sheet is shared`,
         body: dataTable([{ key: "name", label: "Cluster" }, ...months.map((k) => ({ key: k, label: monthLabel(k), num: true, fmt: fmtInt })),
-          { key: "ytd", label: "FY27 YTD", num: true, fmt: fmtInt }, { key: "aop", label: "AOP YTD", num: true, fmt: () => "–" }, { key: "aopPct", label: "Achieved", num: true, fmt: () => "–" }],
+          { key: "ytd", label: "FY27 YTD", num: true, fmt: fmtInt }, { key: "aop", label: "AOP YTD", num: true, fmt: () => "–" }, { key: "aopPct", label: "Achieved YTD", num: true, fmt: () => "–" }],
         trows, { sortKey: "ytd", sortDir: -1, maxHeight: 640, footer: tot }) });
     };
     node.addEventListener("click", open); node.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });

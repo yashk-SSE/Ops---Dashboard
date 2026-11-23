@@ -161,7 +161,7 @@ export function downloadCSV(filename, columns, rows) {
 
 // ---- list filters (D-104): multi-select Cluster / Lane / Cell on every project list.
 // Options are the values present in the list, counted after the other list filters (so Cluster narrows Cell).
-const LIST_FACETS = ["cluster", "lane", "cell"];
+const LIST_FACETS = ["cluster", "lane", "cell", "late"];  // "late": Late / Not late (D-117)
 let facetCloser = false;
 function facetMenu(labelText, getOptions, sel, onChange) {
   const value = el("span", { class: "facet-val" });
@@ -182,6 +182,10 @@ function facetMenu(labelText, getOptions, sel, onChange) {
     if (!det.open) return;
     document.querySelectorAll("details.facet[open]").forEach((d) => { if (d !== det) d.open = false; });
     draw(); search.focus();
+    // open leftwards when the menu would run past the right edge of its drawer or the window (e.g. the Late filter, last in the row)
+    const pop = det.querySelector(".facet-pop"); pop.classList.remove("flip");
+    const edge = Math.min(window.innerWidth, (det.closest(".list-panel, .drawer, aside") || document.body).getBoundingClientRect().right);
+    if (pop.getBoundingClientRect().right > edge - 8) pop.classList.add("flip");
   });
   const clear = el("button", { type: "button", class: "ms-link", text: "Clear", onclick: () => { sel.clear(); sync(); draw(); onChange(); } });
   det.append(el("summary", {}, [el("span", { class: "facet-label", text: labelText }), value]),

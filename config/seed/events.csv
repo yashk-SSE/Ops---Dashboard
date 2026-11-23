@@ -1,0 +1,38 @@
+event_id,event_name,type,ref,pick,status,source,notes
+E_ORDER,Order booked,project_field,order_closure_datetime,,Confirmed,Q-517 / D-34,
+E_HOTO,HOTO (handover),project_field,sales_handover_datetime,,Confirmed,Q-1529 / D-34,
+E_CELL_ALLOC,Cell allocated,task_done,004,last,Confirmed,Q-1529,Manual Cell Allocation
+E_WC_CALL,Welcome call done,task_done,008,last,Confirmed,Q-1529,Initiate Welcome Call & KYC Verification
+E_DEV_SCHED,DEV scheduled,task_done,011,last,Confirmed,Q-1529,Assign PC for DEV
+E_DEV_DONE,DEV completed,task_done,013,last,Confirmed,Q-517 / Q-1529,DEV Schedule
+E_DEV_REPORT,DEV report approved,task_done,015,last,Confirmed,Q-1529,DEV Report Approval
+E_DESIGN_RECV,Design received,task_done,017,last,Confirmed,Q-517 / Q-1529,3D Design Creation
+E_CX_DESIGN,Customer design approved,task_done,020,last,Confirmed,Q-517 / Q-1529,Customer Design Approval
+E_BILLCORR_START,Bill correction started,task_done,"P005,P013,P022",first,Confirmed,D-40,First NC / LC / PC application
+E_BILLCORR_DONE,Bill correction done,task_done,"P012,P020,P031",last,Confirmed,D-40,Last NC / LC / PC reflection
+E_SANCTION,Sanction letter,task_done,"NM105,NM105A,NM008",last,Confirmed,Q-517 / Q-1529,
+E_RTI,RTI (ready to install),greatest_of,"E_CX_DESIGN,E_SANCTION,E_P1_COLLECTED",,Confirmed,D-62,"Latest of customer design approval, sanction letter and payment ready (lane-based); only when all three exist"
+E_P1_COLLECTED_DIRECT,Payment 1 collected (Direct),task_done,"025A,025B",first,Confirmed,D-61,025A Verify Payment 1 Milestone / 025B Other payment type proof and complete (process P1S)
+E_P1_COLLECTED,Payment ready (P1 collected / RFD),by_lane,"DIRECT=E_P1_COLLECTED_DIRECT,NBFC=E_NBFC_RFD,PSU=E_PSU_RFD",,Confirmed,D-61,Direct: first of 025A / 025B; NBFC: NBFC RFD; PSU: PSU RFD
+E_P1_REFLECTED,Payment 1 reflected,task_done,027,last,Confirmed,D-40,Payment 1 Confirmation for Default Milestone & Direct Payment
+E_P2_REFLECTED,Payment 2 reflected,task_done,"031,031A",last,Confirmed,D-40,Payment 2 Confirmation (Direct / by FM for EMI)
+E_ERP_RAISED,ERP raised,task_done,022,last,Confirmed,D-40,BOM creation/Verification
+E_INSTALL_PLANNED,Installation planned,task_done,"032B,NM054C",last,Provisional,OQ-11,Schedule Installation; confirm against Daily Installation Tracker
+E_MATERIAL,Material delivered,task_done,038,last,Confirmed,Q-517 / Q-1529,
+E_INSTALL_DONE,Installation done,task_done,039B,last,Confirmed,D-34,Installation Checklist
+E_NM_APPLY,NM applied online,task_done,NM001,last,Confirmed,Q-1529,
+E_NM_MNRE,NM application (MNRE),task_done,NM100,last,Confirmed,Q-517 / Q-1529,
+E_WCR_DONE,WCR done,milestone_done,WCR Upload Pending,last,TBC,Sheet1 P3,Last task of the WCR Upload milestone; Ops CT to confirm
+E_TRIPARTY,Triparty agreement done,milestone_done,WCR Sign Pending,last,TBC,Sheet1 P3,Customer + vendor signatures on EPC / NM / WCR agreement; confirm the parties and task
+E_METER_TESTED,Meter testing done,task_done,"NM061,NM127,NM018A,NM141",last,Confirmed,D-79,Latest of NM061 Receive Meter from RMT Lab / NM127 / NM018A (meter testing letters) / NM141 (D-79)
+E_NM_READY,NM ready to install,milestone_done,Meter Testing Pending,last,TBC,Sheet1 P3,Testing + procurement done; confirm the task
+E_COMMISSIONED,Commissioned,project_field,commissioning_date,,Confirmed,D-34,
+E_NBFC_RFD,NBFC ready for disbursement,first_available,"E_NBFC_LENDER_RFD,E_NBFC_RFD_OMS",,Confirmed,D-76,"Lender RFD when recorded, else OMS task E004A / E004"
+E_NBFC_LENDER_RFD,NBFC lender RFD,project_field,nbfc_lender_rfd_at,,Confirmed,D-76 / Q-2369,sql/extract/nbfc_lender_rfd.sql: CreditFair / Fibe / Caprion = log stage ready-for-disbursement; others = tag 'RFD Done'; latest time
+E_NBFC_RFD_OMS,NBFC RFD (OMS task),task_done,"E004A,E004",last,Confirmed,Q-1529 / D-61,Fallback for E_NBFC_RFD
+E_PSU_JS,PSU Jan Samarth submitted,task_done,PSU001,last,Confirmed,Q-1529,
+E_PSU_BANK_VISIT,PSU customer bank visit,task_done,"PSUN002,PSU003",last,Confirmed,Q-1529,
+E_PSU_INSPECTION,PSU bank inspection,task_done,"PSUN003,PSU004",last,Confirmed,Q-1529,
+E_PSU_RFD,PSU ready for disbursement,task_done,PSUN004,last,Confirmed,Q-1529,
+E_PSU_70,PSU 70% disbursed,task_done,"PSUN005,PSU006",last,Confirmed,Q-1529,
+E_PSU_30,PSU 30% disbursed,task_done,"PSUN007,PSU008",last,Confirmed,Q-1529,

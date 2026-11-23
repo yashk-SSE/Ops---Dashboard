@@ -1,0 +1,33 @@
+milestone,p2_substage,substage_order,in_commissioning_chain
+Permit,Sanction / Feasibility,1,Y
+Permit & Document Verification,Sanction / Feasibility,1,Y
+Sanction Pending,Sanction / Feasibility,1,Y
+LC Application Pending,Sanction / Feasibility,1,Y
+LC Reflection Pending,Sanction / Feasibility,1,Y
+NC Application Pending,Sanction / Feasibility,1,Y
+NC Reflection Pending,Sanction / Feasibility,1,Y
+PC Application Pending,Sanction / Feasibility,1,Y
+NM Application Pending,NM Application,2,Y
+DCR Certificate Pending,DCR Certificate,3,Y
+WCR Creation Pending,WCR Creation,4,Y
+WCR Sign Pending,WCR Sign,5,Y
+WCR Upload Pending,WCR Submission,6,Y
+WCR Upload Pending - MNRE,WCR Submission,6,Y
+Meter Testing Pending,Meter Testing,7,Y
+meter Testing Pending,Meter Testing,7,Y
+NOC Pending,NOC Visit,8,Y
+Release Order Pending,Release Order,9,Y
+release Order Pending,Release Order,9,Y
+Install Net Meter,Meter Installation,10,Y
+Commissioning Pending,Commissioning,11,Y
+QHSE Audit Pending,Post-install QHSE,20,N
+QHSE Punch Points Closure,Post-install QHSE,20,N
+Verification of QHSE Punch Points,Post-install QHSE,20,N
+Audit Pending,Post-install QHSE,20,N
+Payment 2 Pending,Payment 2,21,N
+P2 by Finance,Payment 2,21,N
+Payment Collection by PC,Payment 2,21,N
+Subsidy Pending - Discom,Subsidy,22,N
+Subsidy Pending - MNRE,Subsidy,22,N
+Subsidy Pending - SSE,Subsidy,22,N
+AMC Document Pending,AMC,23,N

@@ -1,0 +1,366 @@
+key,task_name,department,milestone,source,done_last_30d
+001,Advance Payment,Fin,Hoto Pending,sheet3_name,5098
+002,Document Verification,Fin,Hoto Pending,sheet3_name,5099
+004,Manual Cell Allocation,OB,Cell Allocation Pending,sheet3_name,5063
+007,Permit & Document Verification,Permit,Permit & Document Verification,sheet3_name,4876
+008,Initiate Welcome Call & KYC Verification,OB,Cx Onboarding Pending (FC/ WA),sheet3_name,5079
+009,Emi Document verification,EMI,EMI Application Pending,sheet3_name,2391
+010,Update Customer Slots for DEV,OPS,DEV Schedulling Pending,sheet3_name,5086
+011,Assign PC for DEV,OPS,DEV Schedulling Pending,sheet3_name,5110
+013,DEV Schedule,OPS,DEV Pending,sheet3_name,5021
+013,Insta360 DEV Schedule,OPS,Design Pending,sheet3_name,98
+014,DEV Report,OPS,DEV Report Creation Pending,sheet3_name,5044
+014,Insta360 Installation guide and other details,OPS,Design Pending,sheet3_name,104
+015,DEV Report Approval,OPS,DEV Report Approval Pending,sheet3_name,5046
+015,Re-upload Site Images and Videos,OPS,DEV Report Approval Pending,key_inferred,1
+016,Assign Design Agency,OPS,Design Pending,sheet3_name,5178
+017,3D Design Creation,OPS,Design Pending,sheet3_name,5051
+017,Recreate 3D Design,OPS,Design Pending,sheet3_name,397
+017,Design Creation & Installation guide verification,OPS,Design Pending,sheet3_name,107
+018,3D Design Approval,OPS,PM/PO Design Approval Pending,sheet3_name,5196
+018,Design Approval on recreated 3D Design,OPS,PM/PO Design Approval Pending,sheet3_name,404
+020,Customer Design Approval,OPS,Customer Design Approval Pending,sheet3_name,5248
+020,Customer Design Approval on recreated design,OPS,Customer Design Approval Pending,sheet3_name,405
+022,BOM creation/Verification,NA,BOM Creation Pending,sheet3_name,1537
+023,BOM Verification by FFM,NA,BOM Verification Pending,sheet3_name,3978
+025A,Verify Payment 1 Milestone,OPS,Payment 1 Pending,sheet3_name,1956
+025B,Other payment type proof and complete,OPS,Payment 2 Pending,sheet3_name,3778
+026,Update PC Slot for Payment Collection,,,unmapped,63
+026A,Collect Cash or Cheque,OPS,Payment Collection by PC,sheet3_name,62
+026B,Deposit Cash or Cheque,OPS,Payment Collection by PC,sheet3_name,63
+026C,Assign PC for payment 1 collection,OPS,Payment 1 Pending,sheet3_name,62
+027,Payment 1 Confirmation for Default Milestone & Direct Payment,OPS,Payment 1 Pending,sheet3_name,3895
+029A,Verify Payment 2 Milestone,OPS,Payment 2 Pending,sheet3_name,1294
+029B,Update PC Slot for Payment 2 Collection,,,unmapped,27
+030A,Collect Cash or Cheque,OPS,Payment Collection by PC,sheet3_name,27
+030B,Deposit Cash or Cheque,OPS,Payment Collection by PC,sheet3_name,27
+030C,Assign PC for payment 2 collection,Permit,Payment 2 Pending,sheet3_name,27
+031,Payment 2 Confirmation for Default Milestone & Direct Payment ,OPS,Payment 2 Pending,sheet3_name,1329
+031A,Payment 2 Confirmation by FM for EMI,PSU,P2 by Finance,sheet3_name,2067
+031B,Other payment type proof and complete,OPS,Payment 2 Pending,sheet3_name,1306
+032A,Schedule Material Delivery,OPS,Installation Pending,sheet3_name,3931
+032B,Schedule Installation,OPS,Installation Pending,sheet3_name,3968
+033,Assign Material Delivery Crew,OPS,Installation Pending,sheet3_name,3968
+036,Assign Installation Crew,OPS,Installation Pending,sheet3_name,3966
+038,Checking Material List and Delivering Material,OPS,Installation Pending,sheet3_name,3892
+039A,Performing Installation,OPS,Installation Pending,sheet3_name,3760
+039B,Installation Checklist,QHSE,Installation Pending,sheet3_name,3750
+040,Installation Monitoring,QHSE,Installation Pending,sheet3_name,3751
+041,Quality Monitoring,QHSE,Installation Pending,sheet3_name,3748
+042,Installation Safety Monitoring,QHSE,Installation Pending,sheet3_name,3748
+044,Create AMC Documents,NA,AMC Document Pending,sheet3_name,3883
+045,Quality audit,QHSE,QHSE Audit Pending,sheet3_name,3724
+046,Visit site for quality audit,QHSE,QHSE Audit Pending,sheet3_name,3490
+048,Update Customer Slots for Quality Correction & Assign Crew,QHSE,QHSE Punch Points Closure,sheet3_name,904
+049,Visit Site and update quality points,QHSE,QHSE Audit Pending,sheet3_name,1494
+050,Monitor Site Visit,QHSE,QHSE Punch Points Closure,sheet3_name,1495
+051,Verify Site Audit,QHSE,Audit Pending,sheet3_name,1673
+051,Verify Rectification Audit,QHSE,Verification of QHSE Punch Points,sheet3_name,5
+052,Check for revisit of rectification,QHSE,QHSE Audit Pending,sheet3_name,3665
+053,Reconnection Meeting,NA,Reconnection Meeting Pending,sheet3_name,5183
+054,Verify Site Audit (AMC),QHSE,Audit Pending,sheet3_name,17
+055A,Follow Up on Probable On Hold,CT,Probable on Hold,sheet3_name,1403
+055B,Follow Up on Seeking Cancellation,CT,Seeking Can - CT,sheet3_name,86
+058,Check site feasibility for Insta360 order,OPS,Design Pending,sheet3_name,91
+059,Design Creation for Insta360,OPS,Design Pending,sheet3_name,103
+E001,Select NBFC/PSU to apply for Loan,PSU,JS Application Pending,sheet3_name,3137
+E004A,Update Customer for Nach pending,EMI,RFD Pending,sheet3_name,1316
+E005,Pending Disbursement Verification,PSU,Disbrusal Pending,sheet3_name,2331
+LRM_RECONF_PROGRESS,LRM Reconfirmation,,,unmapped,3
+LRM_RESCHEDULE_PROGRESS,LRM Reschedule,,,unmapped,29
+NM001,Apply NM Online,Permit,NM Application Pending,sheet3_name,2780
+NM002,Create NM File & Assign PC,Permit,NM Application Pending,sheet3_name,2806
+NM002,Create NM File and Assign PC,Permit,NM Application Pending,sheet3_name,112
+NM002A,Create NM File & Assign PC,Permit,NM Application Pending,sheet3_name,1
+NM003,Collect NM File from SSE Office,Permit,NM Application Pending,sheet3_name,2797
+NM003,Collect file from SSE Office,Permit,NM Application Pending,key_inferred,112
+NM004,Submit NM File to Discom ,,,unmapped,2513
+NM004,Submit NM File to DISCOM,,,unmapped,200
+NM004,Submit NM File to Discom,,,unmapped,67
+NM005,Assign PC for AE/JE Survey,Permit,Sanction Pending,sheet3_name,4215
+NM006,Conduct AE/JE Survey with Discom Officer,Permit,Sanction Pending,sheet3_name,4239
+NM006A,Upload forwarding letter and tech feasibility report,Permit,Sanction Pending,sheet3_name,2457
+NM007,Submit Forwarding Letter and Tech Feasibility Report to SSE Office,Permit,Sanction Pending,sheet3_name,2458
+NM008,Check for Sanction Letter & Assign PC,Permit,Sanction Pending,sheet3_name,2658
+NM009,Collect Sanction letter,Permit,Sanction Pending,sheet3_name,239
+NM010,Submit Sanction letter,Permit,Sanction Pending,sheet3_name,242
+NM011,Create WCR & Assign PC,Permit,WCR Creation Pending,sheet3_name,1236
+NM011,Create WCR,Permit,WCR Creation Pending,sheet3_name,246
+NM011A,Create WCR and Assign PC,Permit,WCR Creation Pending,sheet3_name,591
+NM011A,Create WCR,Permit,WCR Creation Pending,sheet3_name,354
+NM012A,Collect WCR from SSE Office,Permit,WCR Upload Pending,sheet3_name,23
+NM012A,Submit WCR and NM Agreement to Discom,Permit,WCR Upload Pending,sheet3_name,1
+NM012B,Submit WCR,Permit,WCR Upload Pending,sheet3_name,23
+NM013,Assign PC for pre-commissioning site visit,Permit,NOC Pending,sheet3_name,3458
+NM014,Schedule Pre-commissioning Site Visit & Communicate Cx,Permit,NOC Pending,sheet3_name,3458
+NM015,Conduct Pre-commissioning Site Visit ,Permit,NOC Pending,sheet3_name,3127
+NM015,Conduct Pre-commissioning Site Visit,Permit,NOC Pending,sheet3_name,38
+NM0152,Collect Synchronization certificate from ADE office,Permit,Subsidy Pending - Discom,sheet3_name,19
+NM016,Collect joint inspection report from DISCOM,Permit,Release Order Pending,sheet3_name,1814
+NM016A,Collect Joint Inspection Report from Discom,Permit,Release Order Pending,sheet3_name,20
+NM016B,Collect Joint Inspection Report from DISCOM,Permit,Release Order Pending,sheet3_name,1499
+NM017,Submit joint inspection report to SSE Office,Permit,Release Order Pending,sheet3_name,1815
+NM017A,Submit to SSE Office,Permit,WCR Upload Pending,sheet3_name,21
+NM017B,Submit Joint Inspection Report to SSE office,Permit,Release Order Pending,sheet3_name,1499
+NM017B,Submit to SSE office,Permit,WCR Upload Pending,sheet3_name,1
+NM018A,Collect Meter Testing Letter,Permit,Meter Testing Pending,sheet3_name,174
+NM018B,Submit Meter Testing Letter to SSE Office,Permit,Meter Testing Pending,sheet3_name,174
+NM018C,Collect Meter Testing Letter,Permit,Meter Testing Pending,sheet3_name,20
+NM018D,Submit Meter Testing Letter to SSE Office,Permit,Meter Testing Pending,sheet3_name,23
+NM018E,Collect Meter Testing Letter,Permit,Meter Testing Pending,sheet3_name,1893
+NM018F,Submit Meter Testing Letter to SSE Office,Permit,Meter Testing Pending,sheet3_name,1894
+NM019,Assign Testing Lab & PC ,Permit,Meter Testing Pending,sheet3_name,1879
+NM019,Assign Testing lab & PC,Permit,Meter Testing Pending,sheet3_name,1606
+NM019,Assign Testing Lab & PC,Permit,Meter Testing Pending,sheet3_name,44
+NM020,Collect NM and Generation meter,Permit,Meter Testing Pending,sheet3_name,1539
+NM020,Collect NM and Generation Meter,Permit,Meter Testing Pending,sheet3_name,731
+NM021,Submit NM and Generation meter to Lab,Permit,Meter Testing Pending,sheet3_name,1883
+NM021,Submit NM and Generation report to lab,Permit,Meter Testing Pending,sheet3_name,811
+NM021,Submit NM and Generation meter to lab,Permit,Meter Testing Pending,sheet3_name,752
+NM022,Collect NM from testing lab,Permit,Meter Testing Pending,sheet3_name,752
+NM022,Collect NM from Testing Lab,Permit,Meter Testing Pending,sheet3_name,22
+NM022A,Collect NM from testing lab,Permit,Meter Testing Pending,sheet3_name,1769
+NM022B,Collect NM from testing lab,Permit,Meter Testing Pending,sheet3_name,187
+NM022C,Collect NM from testing lab,Permit,Meter Testing Pending,sheet3_name,91
+NM023,Submit NM to Discom office,Permit,NM Application Pending,sheet3_name,779
+NM023A,Submit NM to SSE office,Permit,NM Application Pending,sheet3_name,1769
+NM023B,Submit NM to Discom office,Permit,NM Application Pending,sheet3_name,187
+NM023C,Submit NM to Discom office,Permit,NM Application Pending,sheet3_name,91
+NM023D,Submit it to Discom office,,,unmapped,1
+NM024,Create NM Agreement & Assign PC,Permit,WCR Creation Pending,sheet3_name,1794
+NM025,Collect NM agreement from SSE Office,,,unmapped,1794
+NM025A,Collect NM agreement from SSE Office,,,unmapped,189
+NM026,Submit NM agreement to Discom,Permit,NM Application Pending,sheet3_name,1787
+NM026A,Submit NM agreement to Discom,Permit,NM Application Pending,sheet3_name,189
+NM027,Assign PC to collect Release Order from Discom,Permit,Release Order Pending,sheet3_name,1791
+NM028,Collect Release Order from Discom,Permit,Release Order Pending,sheet3_name,1713
+NM029,Upload Release Order & Other Documents on Discom Portal,Permit,release Order Pending,sheet3_name,1852
+NM030,Schedule NM Installation & Commissioning,Permit,Install Net Meter,sheet3_name,4102
+NM031,PC Assignment for I&C,Permit,Install Net Meter,sheet3_name,3879
+NM032,Install Net Meter,Permit,Install Net Meter,sheet3_name,2906
+NM032,Install Net Meter/Configure Smart Meter,Permit,Install Net Meter,sheet3_name,553
+NM033,Commission Net Meter,Permit,Commissioning Pending,sheet3_name,2997
+NM033,Commission net meter,Permit,Commissioning Pending,sheet3_name,1
+NM033A,Commission Net Meter,Permit,Commissioning Pending,sheet3_name,610
+NM034,Collect NM agreement from Discom,,,unmapped,619
+NM034A,Submit NM to SSE office,Permit,NM Application Pending,sheet3_name,619
+NM035,Upload PCR on Portal & Assign PC to collect Meter Installation Letter,Permit,Meter Testing Pending,sheet3_name,460
+NM035,Upload WCR and Net Meter Agreement on Portal & Assign PC to collect Meter Installation Letter,Permit,WCR Upload Pending,sheet3_name,311
+NM036,Collect Meter installation Letter from DISCOM & submit it to Discom along with Meter and JICR,,,unmapped,464
+NM037,Submit Format 6 Hard Copy at Discom Case Worker,,,unmapped,174
+NM040,Check Portal and Pay Installation Fees,Permit,NM Application Pending,sheet3_name,1
+NM043,Map Meter on Portal & Assign PC,,,unmapped,575
+NM044,Check for PPA Intimation letter & assign PC,,,unmapped,116
+NM045,Assign PC for Configuration and Commissioning of Inverter,,,unmapped,174
+NM046,Get signature on format 6 from Client & Discom Officer,,,unmapped,174
+NM047,Get Signature of Client from PPA,Permit,WCR Sign Pending,sheet3_name,111
+NM047A,Get Signature of Client from PPA,Permit,WCR Sign Pending,sheet3_name,4
+NM048,"Submit technical feasibility letter signed by AE/JE, AET, AEE to DISCOM office Case Worker",,,unmapped,116
+NM049,Collect PPA File from SSE office,Permit,WCR Upload Pending,sheet3_name,111
+NM049A,Collect PPA File from SSE office,Permit,WCR Upload Pending,sheet3_name,4
+NM050,Get Discom Office Signature on PPA & Submit to Discom Case Officer,,,unmapped,111
+NM050A,Get Discom Office Signature on PPA & Submit to Discom Case Officer,,,unmapped,4
+NM051,Check for Work Approval Letter ,Permit,Sanction Pending,sheet3_name,116
+NM052,Collect NM from SSE office,Permit,NM Application Pending,sheet3_name,5
+NM052A,Submit to Lab,Permit,Meter Testing Pending,sheet3_name,174
+NM052C,Collect NM from SSE office,Permit,NM Application Pending,sheet3_name,168
+NM053,Submit WCR online & Assign PC,Permit,WCR Upload Pending,sheet3_name,171
+NM053A,Submit WCR Online,Permit,WCR Upload Pending,sheet3_name,620
+NM053A,Submit WCR online,Permit,WCR Upload Pending,sheet3_name,184
+NM054A,Collect WCR from SSE ,,,unmapped,171
+NM054B,Submit WCR to Discom,Permit,WCR Upload Pending,sheet3_name,171
+NM054C,Schedule Installation,OPS,Installation Pending,sheet3_name,171
+NM055,Install Net Meter and generation meter,Permit,Install Net Meter,sheet3_name,309
+NM056,Configuration and Commissioning of Inverter,Permit,Commissioning Pending,sheet3_name,389
+NM061,Receive Meter from RMT Lab,Permit,meter Testing Pending,sheet3_name,575
+NM062,Assign PC for NM Agreement,Permit,NM Application Pending,sheet3_name,619
+NM063,Submit WCR & Signed Net Meter at DISCOM,,,unmapped,837
+NM066,Create TSREDCO File & Assign PC,Permit,WCR Creation Pending,sheet3_name,1
+NM067,Get Customer Signature on TSREDCO Application Form,,,unmapped,1
+NM068,Submit TSREDCO Application in SSE Office,,,unmapped,1
+NM069,Apply for TSREDCO Application Online,Permit,NM Application Pending,sheet3_name,1
+NM070,Check TSREDCO In-Principal Sanction,Permit,NM Application Pending,sheet3_name,1
+NM071,Create WCR & NM Agreement,,,unmapped,1
+NM072,Update Customer Slots for WCR and NM Agreement Signature,,,unmapped,1
+NM073,Assign PC for Signature on WCR and NM Agreement,,,unmapped,1
+NM074,Get Customer Signature on WCR and NM Agreement,NA,NA,sheet3_name,1
+NM075,Assign PC For Meter Requisition Letter,,,unmapped,1
+NM076,Submit Meter Requisition Letter to CSC Office,,,unmapped,1
+NM077,Assign CSC Store & PC,,,unmapped,1
+NM078,Assign PC for Lineman / Line Inspector Availability,,,unmapped,1
+NM079,Get Lineman / Line Inspector Slots,,,unmapped,1
+NM080,Submit Old Meter to Section Office,Permit,Commissioning Pending,sheet3_name,1
+NM082,Assign PC to collect WCR and NM Agreement,Permit,WCR Sign Pending,sheet3_name,623
+NM083,Collect WCR and NM Agreement from SSE,Permit,WCR Sign Pending,sheet3_name,623
+NM084,Submit WCR and NM Agreement from Discom,Permit,WCR Upload Pending,sheet3_name,615
+NM085,Check Demand For Net Meter Charges,,,unmapped,36
+NM086,Check Indent Letter and Make Payment,Permit,Release Order Pending,sheet3_name,472
+NM087,Create WCR & NM Agreement & Assign PC,Permit,WCR Creation Pending,sheet3_name,1
+NM088,Get Customer Signature on WCR and NM Agreement,NA,NA,sheet3_name,2
+NM089,Submit WCR and NM Agreement to Discom,Permit,WCR Upload Pending,sheet3_name,1
+NM090,Assign PC for MCO Generate,,,unmapped,188
+NM091, Collect MCO Letter from Discom,Permit,Release Order Pending,sheet3_name,187
+NM092,Collect WCR & NM agreement from SSE Office,,,unmapped,2
+NM093,Pay Meter Demand Charges on Portal,Permit,Meter Testing Pending,sheet3_name,451
+NM094,Collect WCR from Zone & Submit to Division,Permit,WCR Upload Pending,sheet3_name,156
+NM100,Apply on MNRE portal,Permit,NM Application Pending,sheet3_name,4597
+NM100,Apply on MNRE Portal,Permit,NM Application Pending,sheet3_name,99
+NM101,Submit to BESCOM on mail for first payment link,,,unmapped,111
+NM102,Complete first payment,Permit,NM Application Pending,sheet3_name,526
+NM103,Collect Signature from AEE/AET on Feasibility Report,,,unmapped,112
+NM104,Collect Account Office Signature,,,unmapped,112
+NM105,Check Feasibility,Permit,Sanction Pending,sheet3_name,112
+NM105A,Check Feasibility,Permit,Sanction Pending,sheet3_name,4516
+NM105A,Pending Feasibility Letter,NA,NA,sheet3_name,203
+NM106,Process second payment,,,unmapped,112
+NM107,Initiate PPA agreement / vendor agreement & customer signature,Permit,Sanction Pending,key_inferred,417
+NM107,Initiate PPA agreement/vendor agreement & customer signature,Permit,Sanction Pending,sheet3_name,112
+NM108,Select Vendor on portal,Permit,WCR Upload Pending - MNRE,sheet3_name,3412
+NM108,Select Vendor On Portal,Permit,WCR Upload Pending - MNRE,sheet3_name,608
+NM108,Select Vendor on Portal,Permit,WCR Upload Pending - MNRE,sheet3_name,111
+NM109,Update slots for customer signature,Permit,WCR Sign Pending,sheet3_name,3405
+NM109,Upload slots for customer signature,Permit,WCR Sign Pending,key_inferred,111
+NM110,Assign PC for Customer signature and vendor signature,Permit,WCR Sign Pending,sheet3_name,3527
+NM111,Submit Vendor agreement to SSE office,Permit,WCR Upload Pending,sheet3_name,2721
+NM111,Submit EPC agreement to SSE office,Permit,WCR Upload Pending,sheet3_name,662
+NM111,Submit vendor agreement to SSE office,Permit,WCR Upload Pending,sheet3_name,111
+NM112,Submit PPA Agreement to BESCOM Office,,,unmapped,111
+NM113,Assign PC for BESCOM office visit,Permit,Commissioning Pending,sheet3_name,170
+NM114,Visit BESCOM corporate office with agreements. ,,,unmapped,170
+NM115,"Ensure agrreements upload by BESCOM (Tech feasability, Vendor Agreement, PPA, WCR, Client photos with placard, cancelled cheque",,,unmapped,170
+NM116,Commissioning report upload in MNRE portal,Permit,Subsidy Pending - SSE,sheet3_name,3
+NM117,"Upload Documents on national portal (Cancelled Cheque, Passbook)",Subsidy,WCR Upload Pending - MNRE,sheet3_name,4395
+NM117,"Upload documents on National portal (cancelled cheque, passbook).",Subsidy,Subsidy Pending - SSE,sheet3_name,133
+NM118,Check status in MNRE portal,Permit,Subsidy Pending - MNRE,sheet3_name,3052
+NM118,Check commissioning status & subsidy disbursement in MNRE portal,Subsidy,Subsidy Pending - MNRE,sheet3_name,1753
+NM120,Create joint agreement between vendor and customer,Permit,WCR Creation Pending,sheet3_name,2572
+NM120,Create Joint Agreement Between Vendor and Customer,Permit,WCR Creation Pending,sheet3_name,592
+NM122,Get Customer and Vendor signature on EPC Agreement and NM agreement,Permit,WCR Sign Pending,sheet3_name,2456
+NM122,"Get Customer and Vendor signature on EPC, NM, WCR Agreement",Permit,WCR Sign Pending,sheet3_name,672
+NM123,Assign PC for Joint Inspection Report,Permit,Release Order Pending,sheet3_name,1538
+NM124,Intimate Discom office about commissioning & Assign PC,Subsidy,Subsidy Pending - Discom,sheet3_name,4261
+NM125,Follow up for Technical feasibility approval on national portal,Permit,NM Application Pending,sheet3_name,2414
+NM126,Make Meter testing payment,Permit,Meter Testing Pending,sheet3_name,1786
+NM126,Make meter testing payment,Permit,Meter Testing Pending,sheet3_name,19
+NM127,Collect Request Meter Testing Letter and WCR from SSE office,Permit,Meter Testing Pending,sheet3_name,1893
+NM129,Create Meter Testing Request letter,Permit,Meter Testing Pending,sheet3_name,1898
+NM129A,Create Meter Testing Request letter,Permit,Meter Testing Pending,sheet3_name,40
+NM130,Followup for commissioning update on national portal,Subsidy,Subsidy Pending - MNRE,sheet3_name,3539
+NM130,Follow up for commissioning update on national portal,Subsidy,Subsidy Pending - MNRE,key_inferred,223
+NM131,Assign PC to Collect Meter with test report from Testing Lab,,,unmapped,189
+NM132,Submit WCR to Discom,Permit,WCR Upload Pending,sheet3_name,187
+NM133,Collect Signed NM Agreement from Discom,,,unmapped,187
+NM135,Get Customer signature on NM Application,Permit,NM Application Pending,sheet3_name,1
+NM136,Submit NM Application to SSE Office,Permit,NM Application Pending,sheet3_name,1
+NM137,Upload NM Application on portal,,,unmapped,1
+NM138,Assign PC for followup,,,unmapped,1
+NM139,Followup for document verification and feasibility,Permit,Sanction Pending,sheet3_name,1
+NM149,Collect requisition letter,Permit,Release Order Pending,sheet3_name,95
+NM149A,Collect meter requisition letter,Permit,Release Order Pending,sheet3_name,1
+NM150,Collect Meter from CSC / Direct stores,Permit,Install Net Meter,sheet3_name,89
+NM150A,Collect Meter from CSC / Direct stores,Permit,Install Net Meter,sheet3_name,1
+NM151,Assign PC for Synchronization certificate,Permit,Release Order Pending,sheet3_name,107
+NM152,Collect Synchronization certificate from ADE office,Permit,Subsidy Pending - Discom,sheet3_name,217
+NM156,Update customers slot for customer signature on stage 2 documents and WCR,Permit,NOC Pending,sheet3_name,118
+NM157,Prepare Stage 2 documents and WCR & Assign PC,Permit,NOC Pending,sheet3_name,66
+NM158,Get customer signature on stage 2 documents and WCR,Permit,NOC Pending,sheet3_name,12
+NM158, Get customer signature on stage 2 documents and WCR,Permit,NOC Pending,sheet3_name,7
+NM159,Submit Stage 2 documents to SSE office,,,unmapped,91
+NM160,Upload stage 2 documents and WCR on state portal,Permit,NOC Pending,sheet3_name,90
+NM161,Check for Stage 2 documents approval on portal,Permit,Release Order Pending,sheet3_name,97
+NM162,Update customers slot for customer signature on stage 3 documents and WCR,Permit,Release Order Pending,sheet3_name,60
+NM163,Prepare Stage 3 documents & Assign PC,Permit,Release Order Pending,sheet3_name,60
+NM164,Get customer signature on stage 3 documents and WCR,Permit,NOC Pending,sheet3_name,55
+NM165,Submit Stage 3 documents to SSE office,,,unmapped,61
+NM166,Upload stage 3 documents on state portal,Permit,Release Order Pending,sheet3_name,61
+NM167,Check for Stage 3 documents approval on portal,Permit,Release Order Pending,sheet3_name,62
+NM168,Check for Meter Approval on portal,Permit,Meter Testing Pending,sheet3_name,107
+NM169,Check for NM Acknowledgement on mail,Permit,NM Application Pending,sheet3_name,59
+NM170,Check for Stage 1 Approval on portal,Permit,Sanction Pending,sheet3_name,60
+NM171,Check for First Demand note,Permit,LC Application Pending,sheet3_name,40
+NM172,Check for Second Demand note,Permit,Sanction Pending,sheet3_name,40
+NM173,Make Meter payment on state portal,Permit,Meter Testing Pending,sheet3_name,40
+NM201,First Solar bill reflection,NA,First Solar bill reflection,sheet3_name,392
+NM201,First Bill Reflection,NA,NA,sheet3_name,122
+NM202,Upload DCR Certificate,Permit,DCR Certificate Pending,sheet3_name,3465
+NM203,Submit to TANGEDCO on mail for first payment link,Permit,NM Application Pending,sheet3_name,407
+P001,Create & Upload NC Documents ,Permit,NC Application Pending,sheet3_name,1632
+P002,Create & Upload LC Documents,Permit,LC Application Pending,sheet3_name,1144
+P003,Create & Upload PC Documents,Permit,PC Application Pending,sheet3_name,71
+P004,LC/PC/NC in client scope,Permit,LC Application Pending,sheet3_name,163
+P005,Online NC Application,Permit,NC Application Pending,sheet3_name,1325
+P006,Customer slot for NC Document Signature,Permit,NC Application Pending,sheet3_name,1551
+P007,PC Assignment for NC Document Signature,Permit,NC Application Pending,sheet3_name,1553
+P008,Physical NC File Preparation,Permit,Permit,sheet3_name,1553
+P009,File pickup,Permit,NC Application Pending,sheet3_name,1549
+P010,Customer Signature on NC Files,Permit,NC Application Pending,sheet3_name,1560
+P011,Submit NC File to Discom,Permit,NC Application Pending,sheet3_name,1488
+P012,Check NC update on Portal,Permit,NC Reflection Pending,sheet3_name,1274
+P013,Online LC Application,Permit,LC Application Pending,sheet3_name,1089
+P014,Customer slot for LC Document Signature,Permit,LC Application Pending,sheet3_name,1171
+P015,PC Assignment for LC Document Signature,Permit,LC Application Pending,sheet3_name,1173
+P016,Physical LC File Preparation,Permit,LC Application Pending,sheet3_name,1174
+P017,File pickup,Permit,NC Application Pending,sheet3_name,1173
+P018,Customer Signature on LC Files,Permit,LC Application Pending,sheet3_name,1169
+P019,Submit LC File to Discom,Permit,LC Application Pending,sheet3_name,1135
+P020,Check LC update on Portal,Permit,LC Reflection Pending,sheet3_name,1079
+P021LC,Confirm LC Charges Payment from Cx,Permit,LC Application Pending,sheet3_name,1096
+P021PC,Confirm PC Charges Payment from Cx,Permit,PC Application Pending,sheet3_name,63
+P022,Online PC Application,Permit,PC Application Pending,sheet3_name,58
+P023,Customer slot for PC Document Signature,Permit,PC Application Pending,sheet3_name,67
+P024,PC Assignment for PC Document Signature,Permit,PC Application Pending,sheet3_name,67
+P025,Physical PC File Preparation,Permit,PC Application Pending,sheet3_name,67
+P026,File pickup,Permit,NC Application Pending,sheet3_name,67
+P027,Customer Signature on PC Files,Permit,PC Application Pending,sheet3_name,67
+P028,Submit PC File to Discom,Permit,PC Application Pending,sheet3_name,64
+P029,Hardware Installation & Commissioning by Discom,Permit,Commissioning Pending,sheet3_name,62
+P030,WCR for Phase Change,Permit,PC Application Pending,sheet3_name,65
+P031,Check PC update on Portal,Permit,PC Application Pending,sheet3_name,59
+P032,Signature from Class 1 Electrical contractor ,,,unmapped,16
+P033,Site Inspection & WCR for Load Change,Permit,LC Application Pending,sheet3_name,140
+P034,Signature from Class 1 Electrical contractor,,,unmapped,2
+P035,Load Change Demand Payment,Permit,LC Application Pending,sheet3_name,652
+P036,Phase Change Demand Payment,Permit,PC Application Pending,sheet3_name,11
+PHC001,Pre-HoTo Cancellation Request,,,unmapped,34
+PHC002,Pre-HoTo Cancellation Desk,,,unmapped,31
+PHC003,Refund Follow-up,,,unmapped,2
+PS001,INSTA360 DEV Schedule,OPS,Design Pending,sheet3_name,17333
+PS001,Pre-sales DEV Schedule,OPS,Design Pending,key_inferred,2177
+PS002,Insta360 Installation guide and other details,OPS,Design Pending,sheet3_name,8948
+PS002,Pre-sales DEV Report,OPS,Design Pending,key_inferred,1452
+PS003,Pre-sales DEV report approval,,,unmapped,1450
+PS003,Re-upload Site Images and Videos,,,unmapped,245
+PS004,Assign Pre-sales Design Agency for Insta360,,,unmapped,8974
+PS004,Assign Pre-sales Design Agency for Speed order,,,unmapped,1468
+PS005,Design Creation & Installation guide verification,OPS,Design Pending,sheet3_name,8984
+PS005,Design Creation for speed order,OPS,Design Pending,key_inferred,1451
+PS006,Check site feasibility for Insta360 order,OPS,Design Pending,sheet3_name,1
+PS007,Design Creation for Insta360,OPS,Design Pending,sheet3_name,8951
+PS009,Revision Requested by SC,,,unmapped,6346
+PS010,SPOC Review: Validate Revision Feasibility,,,unmapped,2826
+PSU001,Submit Jan Samarth Application,PSU,JS Application Pending,sheet3_name,1423
+PSU008,Second Disbursal Received,PSU,30% disbursement pending,sheet3_name,1
+PSU009,Check PSU eligibility,,,unmapped,1735
+PSU010,Check PSU Documents,,,unmapped,678
+PSU011,PSU Eligibility 2.0 - BRE,,,unmapped,485
+PSUN001,Assign Loan Executive,PSU,Cx bank Visit pending,sheet3_name,1536
+PSUN002,Bank Visit pending,PSU,Cx bank Visit pending,sheet3_name,1210
+PSUN003,Bank Inspection pending,PSU,Bank Inspection pending,sheet3_name,1137
+PSUN004,Final cx vist for loan approval(RFD),PSU,70% Disbursal Pending,sheet3_name,1312
+PSUN005,First Disbursal Received,PSU,70% Disbursal Pending,sheet3_name,1394
+PSUN006,Submit installation docs,PSU,Final Disbursement (for Psu),sheet3_name,597
+PSUN007,Second Disbursal Received,PSU,30% disbursement pending,sheet3_name,1005
+SC001,Assign Solar Consultant,,,unmapped,82314
+SC002,Upload 3D Design,,,unmapped,2225
+SC003,Approve Advance,,,unmapped,5620
+SC004,Approve Order,,,unmapped,328
+SC005,Pending Verification,,,unmapped,316
+SC007,Document Verification for Opening Act,,,unmapped,12422
+SC008,RM welcome call,OPS,Design Pending,sheet3_name,5336
+SC008,Approve Order,OPS,Design Pending,key_inferred,1
+SCFU_A12,OnDemand Followup Meeting By SC,,,unmapped,2177
+SCFU_A4,Scheduled Followup Visit by SC,,,unmapped,1
+SCLG,Lead Generation,,,unmapped,6
+SC_ECV_01,EC Visit,,,unmapped,228
+SC_IDV_01,Installation Day Visit,,,unmapped,65
+SC_SV_01,Site Visit,,,unmapped,457

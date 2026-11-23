@@ -1,0 +1,21 @@
+stage_id,section,stage_name,stage_order,start_event,end_event,applies_to,sla_days,sla_owner,status,decision,notes
+F01,P1 HOTO-Install funnel,HOTO to Bill correction done,2,E_HOTO,E_BILLCORR_DONE,LC/NC/PC started,,Ops CT,Draft,D-40,Provisional (OQ-60): only projects where an LC/NC/PC application task exists. MH net-metering LC runs inside NM sanction with no LC tasks.
+F02,P1 HOTO-Install funnel,HOTO to RTI,6,E_HOTO,E_RTI,All,,Ops CT,Draft,D-62,"RTI = latest of design approval, sanction letter, payment ready"
+F03,P1 HOTO-Install funnel,HOTO to Payment ready (P1 collected / RFD),4,E_HOTO,E_P1_COLLECTED,All,,Ops CT,Draft,D-61,Direct: first of 025A / 025B; NBFC: NBFC RFD; PSU: PSU RFD
+F04,P1 HOTO-Install funnel,HOTO to Payment 1 reflected,5,E_HOTO,E_P1_REFLECTED,All,,Ops CT,Draft,D-40,
+F05,P1 HOTO-Install funnel,HOTO to ERP raised,7,E_HOTO,E_ERP_RAISED,All,,Ops CT,Draft,D-40,
+F06,P1 HOTO-Install funnel,HOTO to Installation planned,8,E_HOTO,E_INSTALL_PLANNED,All,,Ops CT,Draft,OQ-11,
+F07,P1 HOTO-Install funnel,HOTO to Installation done,9,E_HOTO,E_INSTALL_DONE,All,,Ops CT,Draft,D-34,Overall funnel TAT
+F08,P1 HOTO-Install funnel,HOTO to Design approval,1,E_HOTO,E_CX_DESIGN,All,,Ops CT,Draft,D-103,Customer design approval (task 020). Added as its own 'waiting for' stage (was only inside RTI)
+F09,P1 HOTO-Install funnel,HOTO to Sanction (permit),3,E_HOTO,E_SANCTION,All,,Ops CT,Draft,D-103,Sanction letter (NM105 / NM105A / NM008). Added as its own 'waiting for' stage (was only inside RTI)
+P201,P2 Install-Commissioning,Installation to Commissioning,1,E_INSTALL_DONE,E_COMMISSIONED,All,,Ops CT,Built,D-35,Built and reconciled 2026-11-07
+T01,P3 TAT breach,Bill correction,1,E_BILLCORR_START,E_BILLCORR_DONE,LC/NC/PC started,,Ops CT,Draft,D-40,Provisional (OQ-60): only projects where an LC/NC/PC application task exists. MH net-metering LC runs inside NM sanction with no LC tasks.
+T02,P3 TAT breach,RTI,2,E_HOTO,E_RTI,All,,Ops CT,Draft,D-40,Start event TBC
+T03,P3 TAT breach,Payments collected (P1 collected / RFD),3,E_HOTO,E_P1_COLLECTED,All,,Ops CT,Draft,D-61,End = payment ready by lane; start TBC
+T04,P3 TAT breach,Payments reflected,4,E_P1_COLLECTED,E_P1_REFLECTED,All,,Ops CT,Draft,D-40,Start depends on T03
+T05,P3 TAT breach,ERP raised,5,E_P1_REFLECTED,E_ERP_RAISED,All,,Ops CT,Draft,D-40,Start event TBC
+T06,P3 TAT breach,Installations planned,6,E_ERP_RAISED,E_INSTALL_PLANNED,All,,Ops CT,Draft,OQ-11,Start event TBC
+T07,P3 TAT breach,WCR done,7,E_INSTALL_DONE,E_WCR_DONE,All,,Ops CT,Draft,,End event TBC
+T08,P3 TAT breach,Triparty agreement done,8,E_INSTALL_DONE,E_TRIPARTY,All,,Ops CT,Draft,,End event TBC
+T09,P3 TAT breach,NM ready to install (testing / procurement),9,E_WCR_DONE,E_NM_READY,All,,Ops CT,Draft,,Start and end TBC
+T10,P3 TAT breach,Commissioning,10,E_NM_READY,E_COMMISSIONED,All,,Ops CT,Draft,,Start depends on T09

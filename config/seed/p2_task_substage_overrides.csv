@@ -1,0 +1,97 @@
+task_name,p2_substage,source
+Apply NM Online,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Apply on MNRE portal,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Assign PC for AE/JE Survey,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Assign PC for BESCOM office visit,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Assign PC for Customer signature and vendor signature,WCR Sign,Pan India Commissioning > Mapping_sheet
+Assign PC for Customer signature on Subsidy documents,,Pan India Commissioning > Mapping_sheet
+Assign PC for Joint Inspection Report,NOC Visit,Pan India Commissioning > Mapping_sheet
+Assign PC for pre-commissioning site visit,NOC Visit,Pan India Commissioning > Mapping_sheet
+Assign PC for Synchronization certificate,Release Order,Pan India Commissioning > Mapping_sheet
+Assign Testing lab & PC,Meter Testing,Pan India Commissioning > Mapping_sheet
+Check Feasibility,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Check for Sanction Letter & Assign PC,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Check for Work Approval Letter,Release Order,Pan India Commissioning > Mapping_sheet
+Check Indent Letter and Make Payment,Meter Testing,Pan India Commissioning > Mapping_sheet
+Check LC update on Portal,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Check NC update on Portal,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Check PC update on Portal,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Check status in MNRE portal,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Check subsidy disbursement on portal,,Pan India Commissioning > Mapping_sheet
+Collect Joint Inspection Report from DISCOM,Release Order,Pan India Commissioning > Mapping_sheet
+Collect Meter Testing Letter,Meter Testing,Pan India Commissioning > Mapping_sheet
+Collect NM agreement from SSE Office,WCR Sign,Pan India Commissioning > Mapping_sheet
+Collect NM and Generation meter,Meter Testing,Pan India Commissioning > Mapping_sheet
+Collect NM File from SSE Office,WCR Sign,Pan India Commissioning > Mapping_sheet
+Collect NM from SSE office,Meter Installation,Pan India Commissioning > Mapping_sheet
+Collect NM from testing lab,Meter Installation,Pan India Commissioning > Mapping_sheet
+Collect Release Order from Discom,Release Order,Pan India Commissioning > Mapping_sheet
+Collect requisition letter,Release Order,Pan India Commissioning > Mapping_sheet
+Collect Sanction letter,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Collect Synchronization certificate from ADE office,Release Order,Pan India Commissioning > Mapping_sheet
+Commission Net Meter,Commissioning,Pan India Commissioning > Mapping_sheet
+Commissioning report upload in MNRE portal,,Pan India Commissioning > Mapping_sheet
+Complete first payment,,Pan India Commissioning > Mapping_sheet
+Conduct AE/JE Survey with Discom Officer,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Conduct Pre-commissioning Site Visit,NOC Visit,Pan India Commissioning > Mapping_sheet
+Configuration and Commissioning of Inverter,Commissioning,Pan India Commissioning > Mapping_sheet
+Confirm LC Charges Payment from Cx,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Confirm PC Charges Payment from Cx,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Create & Upload LC Documents,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Create & Upload NC Documents,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Create & Upload PC Documents,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Create joint agreement between vendor and customer,WCR Creation,Pan India Commissioning > Mapping_sheet
+Create Meter Testing Request letter,Meter Testing,Pan India Commissioning > Mapping_sheet
+Create TSREDCO File & Assign PC,WCR Creation,Pan India Commissioning > Mapping_sheet
+Create WCR,WCR Creation,Pan India Commissioning > Mapping_sheet
+Create WCR & Assign PC,WCR Creation,Pan India Commissioning > Mapping_sheet
+Customer Signature on LC Files,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+File pickup,WCR Sign,Pan India Commissioning > Mapping_sheet
+Get Customer and Vendor signature on EPC Agreement and NM agreement,WCR Sign,Pan India Commissioning > Mapping_sheet
+"Get Customer and Vendor signature on EPC, NM, WCR Agreement",WCR Sign,Pan India Commissioning > Mapping_sheet
+Get Customer Signature on Inspection Report,Release Order,Pan India Commissioning > Mapping_sheet
+Get Customer signature on NM Application,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Get customer signature on stage 2 documents and WCR,WCR Sign,Pan India Commissioning > Mapping_sheet
+Get Customer Signature on TSREDCO Application Form,WCR Sign,Pan India Commissioning > Mapping_sheet
+Hardware Installation & Commissioning by Discom,Meter Installation,Pan India Commissioning > Mapping_sheet
+Initiate PPA agreement/vendor agreement & customer signature,WCR Sign,Pan India Commissioning > Mapping_sheet
+Install Net Meter,Meter Installation,Pan India Commissioning > Mapping_sheet
+Install Net Meter and generation meter,Meter Installation,Pan India Commissioning > Mapping_sheet
+Install Net Meter/Configure Smart Meter,Meter Installation,Pan India Commissioning > Mapping_sheet
+LC/PC/NC in client scope,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Load Change Demand Payment,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Make Meter payment on state portal,Meter Installation,Pan India Commissioning > Mapping_sheet
+Make meter testing payment,Meter Testing,Pan India Commissioning > Mapping_sheet
+Online LC Application,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Online NC Application,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Online PC Application,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Pay Meter Demand Charges on Portal,Meter Testing,Pan India Commissioning > Mapping_sheet
+PC Assignment for I&C,Meter Installation,Pan India Commissioning > Mapping_sheet
+Permit & Document Verification,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Physical LC File Preparation,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Schedule NM Installation & Commissioning,Meter Installation,Pan India Commissioning > Mapping_sheet
+Select Vendor on portal,WCR Creation,Pan India Commissioning > Mapping_sheet
+Site Inspection & WCR for Load Change,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Submit joint inspection report to SSE Office,Release Order,Pan India Commissioning > Mapping_sheet
+Submit LC File to Discom,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Submit Meter Testing Letter to SSE Office,Meter Testing,Pan India Commissioning > Mapping_sheet
+Submit NC File to Discom,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Submit NM agreement to Discom,WCR Submission,Pan India Commissioning > Mapping_sheet
+Submit NM and Generation meter to Lab,Meter Testing,Pan India Commissioning > Mapping_sheet
+Submit NM and Generation report to lab,Meter Testing,Pan India Commissioning > Mapping_sheet
+Submit NM File to Discom,WCR Submission,Pan India Commissioning > Mapping_sheet
+Submit NM to Discom office,WCR Submission,Pan India Commissioning > Mapping_sheet
+Submit Old Meter to Section Office,Meter Installation,Pan India Commissioning > Mapping_sheet
+Submit PC File to Discom,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Submit to SSE Office,WCR Submission,Pan India Commissioning > Mapping_sheet
+Submit Vendor agreement to SSE office,WCR Submission,Pan India Commissioning > Mapping_sheet
+Submit WCR & Signed Net Meter at DISCOM,WCR Submission,Pan India Commissioning > Mapping_sheet
+Submit WCR and NM Agreement from Discom,WCR Submission,Pan India Commissioning > Mapping_sheet
+Submit WCR Online,WCR Submission,Pan India Commissioning > Mapping_sheet
+Submit WCR online & Assign PC,WCR Submission,Pan India Commissioning > Mapping_sheet
+Update slots for customer signature,WCR Sign,Pan India Commissioning > Mapping_sheet
+Upload DCR Certificate,DCR Certificate,Pan India Commissioning > Mapping_sheet
+Upload forwarding letter and tech feasibility report,Sanction / Feasibility,Pan India Commissioning > Mapping_sheet
+Upload PCR on Portal & Assign PC to collect Meter Installation Letter,WCR Submission,Pan India Commissioning > Mapping_sheet
+Upload stage 2 documents and WCR on state portal,WCR Submission,Pan India Commissioning > Mapping_sheet
+Upload WCR and Net Meter Agreement on Portal & Assign PC to collect Meter Installation Letter,WCR Submission,Pan India Commissioning > Mapping_sheet

@@ -1,0 +1,83 @@
+# Daily refresh of the Ops Dashboard (D-114, host D-115): pull fresh data from Metabase, rebuild the site and publish it on
+# GitHub Pages. Runs every day at 04:00 IST (22:30 UTC the evening before). GitHub can start scheduled runs a few minutes late
+# at busy times. "Run workflow" on the Actions tab starts one by hand.
+#
+# Secrets (repo Settings > Secrets and variables > Actions), added by Yash, never written anywhere else:
+#   METABASE_URL, METABASE_API_KEY   the same values as in the local .env
+# GitHub masks secret values in the run logs. The repo is public for now (D-115), so the logs are public too: the pipeline
+# prints only counts and percentiles, never project rows.
+#
+# Safety: if the refresh or the build fails, nothing is published and yesterday's site stays live. The build refuses to run if
+# any email address or phone number is in the data (pipeline/common/privacy.py). No data is committed to the repo: the site is
+# handed to Pages as a short-lived artifact (1 day) and the runner is wiped after each run.
+#
+# One-time repo setting: Settings > Pages > Build and deployment > Source = "GitHub Actions".
+name: Daily refresh (04:00 IST)
+
+on:
+  schedule:
+    - cron: "30 22 * * *"  # 22:30 UTC = 04:00 IST
+  workflow_dispatch: {}
+
+concurrency:
+  group: daily-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write      # publish to GitHub Pages
+  id-token: write   # required by actions/deploy-pages
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Refresh data from Metabase (extract, compute, publish)
+        env:
+          METABASE_URL: ${{ secrets.METABASE_URL }}
+          METABASE_API_KEY: ${{ secrets.METABASE_API_KEY }}
+        run: python -m pipeline.run_all
+
+      - name: Build the site folder (stops if any email or phone number is found)
+        run: python -m pipeline.tools.build_site
+
+      - name: Set up GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Hand the site to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/site
+          retention-days: 1
+
+      - name: Publish on GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, os
+          try:
+              m = json.load(open("web/data/meta.json", encoding="utf-8"))
+              lines = [f"Data as of {m.get('as_of')} (generated {m.get('generated_at')})"]
+              for k, v in (m.get("sections") or {}).items():
+                  lines.append(f"- {k}: extracted {v.get('extracted_at')}")
+          except Exception as e:  # the refresh failed before publishing
+              lines = [f"No dashboard data published in this run ({type(e).__name__})."]
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write("\n".join(lines) + "\n")
+          PY

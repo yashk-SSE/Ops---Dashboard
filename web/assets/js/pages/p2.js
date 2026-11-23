@@ -119,5 +119,5 @@ export function render(main, { data, state, setState, ctx }) {
     { id: "p75", label: "Install → commissioning P75", src: "f", kind: "days", good: "down", value: tat("p75"), base: nClosed },
     { id: "p90", label: "Install → commissioning P90", src: "f", kind: "days", good: "down", value: tat("p90"), base: nClosed },
   ];
-  main.append(block(6, "Month on month", "Month to date and full months, last 6 months", momTables(metrics, ctx, { f: { file: f, ci, rows, list: factList } })));
+  main.append(block(6, "Month on month", "Month to date and full months, last 6 months", momTables(metrics, ctx, { f: { file: f, ci, rows, list: factList } }, { state, setState })));
 }

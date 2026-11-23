@@ -10,7 +10,7 @@
 //           value(rows, range) -> number|null, base?(rows, range) -> sample size, minBase?, kpi?, mom?, rank?, foot? }
 // Sources: { [src]: { file, ci, rows } }  (rows already filtered by the global filters)
 import { el, card, segmented, metricCard, dataTable, downloadCSV, projectList } from "./ui.js";
-import { monthKey, monthLabel, monthBounds, shiftMonth, fmtDay, label, isExpansion } from "./data.js";
+import { monthKey, monthLabel, monthBounds, shiftMonth, fmtDay, label, isExpansion, matcher } from "./data.js";
 import { delta } from "./metrics.js";
 import { fmtInt, fmtPct } from "./stats.js";
 
@@ -214,20 +214,63 @@ export function wire(node, onList, onPage) {
 }
 
 // ---------------------------------------------------------------- 2. month on month: MTD table + full-month table (D-94)
-export function momTables(metrics, ctx, sources) {
+// Lane switch above the two tables (D-118): All lanes, or one lane at a time, inside the top bar's filters.
+export const LANE_ORDER = ["PSU", "FL Direct", "FL NBFC", "Name change", "LC only", "Phase change"];
+/** Lanes present in the sources' rows (top-bar filters already applied) and the sources narrowed to one lane ("all": untouched). */
+function laneScope(sources, lane) {
+  const present = new Set();
+  for (const s of Object.values(sources)) {
+    const li = s.ci ? s.ci.lane : null;
+    if (li == null) continue;
+    const labels = s.file.dims.lane || [], seen = new Set();
+    for (const r of s.rows) seen.add(r[li]);
+    for (const i of seen) if (labels[i]) present.add(labels[i]);
+  }
+  const lanes = [...LANE_ORDER.filter((l) => present.has(l)), ...[...present].filter((l) => !LANE_ORDER.includes(l)).sort()];
+  const cur = lane && lane !== "all" && lanes.includes(lane) ? lane : "all";
+  if (cur === "all") return { lanes, cur, sources };
+  const narrowed = {};
+  for (const [k, s] of Object.entries(sources)) {
+    const keep = s.ci && s.ci.lane != null ? matcher(s.file, { lane: [cur] }, s.ci) : () => true;
+    narrowed[k] = { ...s, rows: s.rows.filter(keep) };
+  }
+  return { lanes, cur, sources: narrowed };
+}
+
+/**
+ * Month on month: MTD table + full-month table (D-94). opts = { state, setState } adds the lane switch on top (D-118, shared
+ * state `momLane`). A rate or TAT cell that rests on fewer than minBase projects (default 20) is greyed, its count in the tooltip.
+ */
+export function momTables(metrics, ctx, sourcesIn, opts = {}) {
   const rows = metrics.filter((m) => m.kind !== "now" && m.mom !== false);
+  const withLane = typeof opts.setState === "function";
+  const { lanes, cur: lane, sources } = withLane ? laneScope(sourcesIn, opts.state ? opts.state.momLane : "all") : { lanes: [], cur: "all", sources: sourcesIn };
+  const laneNote = lane === "all" ? "" : ` · ${lane} lane only`;
+  const cell = (m, s, range, cls = "num") => {
+    const v = val(m, s, range);
+    const n = v != null && m.base && (m.kind === "pct" || m.kind === "days") ? m.base(s.rows, range) : null;
+    const low = n != null && n < (m.minBase ?? 20);
+    return el("td", { class: `${cls}${low ? " low-n" : ""}`, text: fmtKind(m.kind, v),
+      "data-tip": low ? `Based on only ${fmtInt(n)} project${n === 1 ? "" : "s"}: too few to read much into` : null });
+  };
   const out = [];
+  if (withLane && lanes.length > 1) {
+    out.push(el("div", { class: "mom-lane" }, [
+      segmented([["all", "All lanes"], ...lanes.map((l) => [l, l])], lane, (v) => opts.setState({ momLane: v }), "Lane"),
+      el("span", { class: "mom-lane-note", text: lane === "all" ? "Pick a lane to see both tables for that lane only" : `Both tables: ${lane} lane only · the rest of the page follows the top bar` }),
+    ]));
+  }
   if (ctx.live) {
     const head = el("tr", {}, [el("th", { text: "Metric" }), ...ctx.mtdCols.map((c) => el("th", { class: "num", text: c.label, "data-tip": `${fmtDay(c.range[0])} – ${fmtDay(c.range[1])}` })),
       el("th", { class: "num cur", text: ctx.curText, "data-tip": ctx.curRange }), el("th", { class: "num", text: "vs last month" })]);
     const body = rows.map((m) => {
       const s = sources[m.src], v = val(m, s, ctx.cur), p = val(m, s, ctx.mtdCols.at(-1).range), d = delta(v, p, deltaKind(m.kind), m.good);
       return el("tr", {}, [el("td", { text: m.label, "data-tip": m.hint || null }),
-        ...ctx.mtdCols.map((c) => el("td", { class: "num", text: fmtKind(m.kind, val(m, s, c.range)) })),
-        el("td", { class: "num cur", text: fmtKind(m.kind, v) }),
+        ...ctx.mtdCols.map((c) => cell(m, s, c.range)),
+        cell(m, s, ctx.cur, "num cur"),
         el("td", { class: `num ${d ? `tone-${d.tone}` : ""}`, text: d ? `${d.arrow} ${d.text}` : "–" })]);
     });
-    out.push(card("Month to date, month on month", `Day 1 – ${ctx.dayN} of each month (complete days) · hover a month for its dates`,
+    out.push(card("Month to date, month on month", `Day 1 – ${ctx.dayN} of each month (complete days) · hover a month for its dates${laneNote}`,
       el("div", { class: "table-wrap" }, el("table", { class: "data mom" }, [el("thead", {}, head), el("tbody", {}, body)]))));
   }
   const curHead = ctx.live ? `${ctx.label} to date` : ctx.label;
@@ -242,10 +285,10 @@ export function momTables(metrics, ctx, sources) {
       ? el("td", { class: "num", text: p ? `${Math.round((100 * v) / p)}% of ${ctx.prevLabel}` : "–", "data-tip": `Day ${ctx.dayN} of ${ctx.days} = ${Math.round((100 * ctx.dayN) / ctx.days)}% of the month gone` })
       : el("td", { class: `num ${d ? `tone-${d.tone}` : ""}`, text: d ? `${d.arrow} ${d.text}` : "–" });
     return el("tr", {}, [el("td", { text: m.label, "data-tip": m.hint || null }),
-      ...ctx.cols.map((c) => el("td", { class: "num", text: fmtKind(m.kind, val(m, s, c.range)) })),
-      el("td", { class: "num cur", text: fmtKind(m.kind, v) }), changeCell]);
+      ...ctx.cols.map((c) => cell(m, s, c.range)),
+      cell(m, s, ctx.cur, "num cur"), changeCell]);
   });
-  out.push(card("Full month, month on month", ctx.live ? `Last 6 full months · ${ctx.label} so far, as a share of last month (counts) or vs last month (rates, TATs)` : "Last 6 full months",
+  out.push(card("Full month, month on month", (ctx.live ? `Last 6 full months · ${ctx.label} so far, as a share of last month (counts) or vs last month (rates, TATs)` : "Last 6 full months") + laneNote,
     el("div", { class: "table-wrap" }, el("table", { class: "data mom" }, [el("thead", {}, head), el("tbody", {}, body)]))));
   return el("div", { class: "stack" }, out);
 }

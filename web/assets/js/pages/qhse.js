@@ -152,5 +152,5 @@ export function render(main, { data, state, setState, ctx }) {
     { id: "close50", label: "Closure TAT P50", src: "q", kind: "days", good: "down", minBase: 15, value: (rs, r) => tatSummary(rectified(rs, r)).p50, base: (rs, r) => rectified(rs, r).length },
     { id: "close90", label: "Closure TAT P90", src: "q", kind: "days", good: "down", minBase: 15, value: (rs, r) => tatSummary(rectified(rs, r)).p90, base: (rs, r) => rectified(rs, r).length },
   ];
-  main.append(block(6, "Month on month", "Month to date and full months, last 6 months", momTables(metrics, ctx, { q: { file: f, ci: c, rows, list } })));
+  main.append(block(6, "Month on month", "Month to date and full months, last 6 months", momTables(metrics, ctx, { q: { file: f, ci: c, rows, list } }, { state, setState })));
 }

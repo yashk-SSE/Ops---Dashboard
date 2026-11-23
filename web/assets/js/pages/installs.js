@@ -173,5 +173,5 @@ export function render(main, { data, state, setState, ctx }) {
     { id: "m2", label: "Installs · M2+ (older HOTOs)", src: "f", kind: "count", good: "up", value: (rs, r) => byAge(2)(rs, r).length, pick: byAge(2) },
   ];
   main.append(block(5, "Month on month", `${planSet.size ? "Plan clusters · " : ""}installations by HOTO age · month to date and full months, last 6 months`,
-    momTables(metrics, ctx, { f: { file: f, ci: c, rows: scoped, list } })));
+    momTables(metrics, ctx, { f: { file: f, ci: c, rows: scoped, list } }, { state, setState })));
 }

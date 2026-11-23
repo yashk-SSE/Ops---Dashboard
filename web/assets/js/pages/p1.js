@@ -200,5 +200,5 @@ export function render(main, { data, state, setState, ctx }) {
     { id: "h2i90", label: "HOTO → install P90", src: "i", kind: "days", good: "down", value: h2i("p90"), base: (rs, r) => M.hotoToInstall(data, rs, r).count },
   ];
   main.append(block(7, "Month on month", "Month to date and full months · M0 / M1 / M2 = share of each HOTO month installed in the same, next and following month",
-    momTables(metrics, ctx, { f: { file: f, ci, rows, list: hotoList }, i: { file: p2, ci: p2.ci, rows: p2r, list: p2FactList(p2) } })));
+    momTables(metrics, ctx, { f: { file: f, ci, rows, list: hotoList }, i: { file: p2, ci: p2.ci, rows: p2r, list: p2FactList(p2) } }, { state, setState })));
 }

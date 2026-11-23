@@ -117,5 +117,5 @@ export function render(main, { data, state, setState, ctx }) {
     { id: "tat50", label: "Closure TAT P50", src: "e", kind: "days", good: "down", value: (rs2, r) => tatSummary(closedTat(rs2, r)).p50, base: (rs2, r) => closedTat(rs2, r).length },
     { id: "tat90", label: "Closure TAT P90", src: "e", kind: "days", good: "down", value: (rs2, r) => tatSummary(closedTat(rs2, r)).p90, base: (rs2, r) => closedTat(rs2, r).length },
   ];
-  main.append(block(6, "Month on month", "Tickets by month of creation · TAT by month of closing · month to date and full months", momTables(metrics, ctx, { e: { file: f, ci: c, rows, list } })));
+  main.append(block(6, "Month on month", "Tickets by month of creation · TAT by month of closing · month to date and full months", momTables(metrics, ctx, { e: { file: f, ci: c, rows, list } }, { state, setState })));
 }

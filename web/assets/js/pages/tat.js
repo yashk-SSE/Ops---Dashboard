@@ -145,5 +145,5 @@ export function render(main, { data, state, setState, ctx }) {
     metrics.push({ id: `${s.id}90`, label: `${s.name} P90`, src: s.src, kind: "days", good: "down", value: q("p90"), base: (rs, r) => s.done(rs, r).length });
   }
   main.append(block(6, "Month on month", "Stage TAT P50 / P75 / P90 by month of completion · month to date and full months",
-    momTables(metrics, ctx, { p1: { file: f1, ci: c1, rows: p1r }, p2: { file: f2, ci: c2, rows: p2r } })));
+    momTables(metrics, ctx, { p1: { file: f1, ci: c1, rows: p1r }, p2: { file: f2, ci: c2, rows: p2r } }, { state, setState })));
 }

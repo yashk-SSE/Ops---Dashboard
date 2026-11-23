@@ -114,5 +114,5 @@ export function render(main, { data, state, setState, ctx }) {
     { id: "vsp", label: "Vendor selection pending (now)", src: "s", kind: "now", good: "down", value: stageCount(VSP) },
   ];
   main.append(block(6, "Month on month", "Disbursals by the month OMS recorded them (from Oct 2026; earlier months bulk-loaded) · commissioned by month of commissioning",
-    momTables(metrics, ctx, { s: { file: f, ci: c, rows, list } })));
+    momTables(metrics, ctx, { s: { file: f, ci: c, rows, list } }, { state, setState })));
 }

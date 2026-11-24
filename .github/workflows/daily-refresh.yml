@@ -15,6 +15,8 @@
 # Safety: if the refresh or the build fails, nothing is published and yesterday's site stays live. The build refuses to run if
 # any email address or phone number is in the data (pipeline/common/privacy.py). No data is committed to the repo: the site is
 # handed to Pages as a short-lived artifact (1 day) and the runner is wiped after each run.
+# Publishing (D-120): a 20-second pause before "Publish", one more try a minute later if it fails, then a check that the live
+# site shows this run's data within 12 minutes (otherwise the run is red).
 #
 # One-time repo setting: Settings > Pages > Build and deployment > Source = "GitHub Actions".
 name: Daily refresh (03:47 IST, backup 06:17)
@@ -82,7 +84,7 @@ jobs:
     timeout-minutes: 75
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url || steps.deploy2.outputs.page_url }}
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
@@ -110,9 +112,56 @@ jobs:
           path: dist/site
           retention-days: 1
 
+      # D-120: on 24 Nov "Publish" twice failed with 'No artifacts named "github-pages" were found' one second after the upload
+      # (GitHub hadn't registered the package yet). So: a short pause, and one more try a minute later if the first fails.
+      - name: Give GitHub a moment to register the site package
+        run: sleep 20
+
       - name: Publish on GitHub Pages
         id: deploy
+        continue-on-error: true
         uses: actions/deploy-pages@v4
+
+      - name: Wait a minute before trying again
+        if: steps.deploy.outcome == 'failure'
+        run: sleep 60
+
+      - name: Publish on GitHub Pages (second try)
+        id: deploy2
+        if: steps.deploy.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+
+      # D-120: on 24 Nov a publish reported success but GitHub Pages kept serving the old build. This step reads the live site
+      # until it shows this run's data; if it doesn't within 12 minutes the run turns red (GitHub emails the repo owner).
+      # Browsers and GitHub's cache can hold a file for up to 10 minutes, hence the 12.
+      - name: Check the live site shows the new data
+        env:
+          PAGE_URL: ${{ steps.deploy.outputs.page_url || steps.deploy2.outputs.page_url }}
+        run: |
+          python - <<'PY'
+          import json, os, sys, time, urllib.request
+          built = json.load(open("web/data/meta.json", encoding="utf-8"))["generated_at"]
+          url = os.environ["PAGE_URL"].rstrip("/") + "/data/meta.json"
+          deadline, live = time.time() + 12 * 60, None
+          while True:
+              try:
+                  req = urllib.request.Request(url, headers={"Cache-Control": "no-cache", "User-Agent": "daily-refresh"})
+                  with urllib.request.urlopen(req, timeout=30) as r:
+                      live = json.load(r).get("generated_at")
+              except Exception as e:
+                  live = f"unreadable ({type(e).__name__})"
+              if live == built:
+                  print(f"The live site shows this run's data (generated {built}).")
+                  break
+              if time.time() > deadline:
+                  msg = (f"The live site still shows data generated {live}, not this run's {built}, 12 minutes after publishing: "
+                         "GitHub Pages has not switched to the new build. Re-run the workflow (or wait for the 06:17 backup).")
+                  print(f"::error::{msg}")
+                  with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+                      f.write(msg + "\n")
+                  sys.exit(1)
+              time.sleep(20)
+          PY
 
       - name: Summary
         if: always()

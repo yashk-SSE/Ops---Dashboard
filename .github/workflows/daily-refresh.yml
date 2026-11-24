@@ -1,30 +1,35 @@
-# Daily refresh of the Ops Dashboard (D-114, host D-115, schedule D-119): pull fresh data from Metabase, rebuild the site and
-# publish it on GitHub Pages. "Run workflow" on the Actions tab starts one by hand (always a full refresh).
+# Refresh of the Ops Dashboard (D-114, host D-115, schedule D-119 / D-121): pull fresh data from Metabase, rebuild the site
+# and publish it on GitHub Pages. "Run workflow" on the Actions tab starts one by hand (always a full refresh).
 #
-# Schedule (D-119). GitHub starts scheduled runs on a best-effort basis: they can start late or be skipped (24 Nov 2026: the
-# 04:00 IST run never started). So there are two:
-#   03:47 IST  main run, off the busy :00 / :30 marks
-#   06:17 IST  backup: first reads the live site's data/meta.json and stops if it was already generated today (IST);
-#              otherwise it does the full refresh
+# Schedule (D-119, D-121), all at odd minutes: GitHub starts scheduled runs on a best-effort basis and is most likely to delay
+# or skip them at the busy :00 / :30 marks (24 Nov 2026: the 04:00 IST run never started). Twice a day, each with a backup:
+#   03:47 IST  morning run
+#   06:17 IST  morning backup: stops if the live data was generated today (IST), otherwise does the full refresh
+#   18:11 IST  evening run
+#   19:41 IST  evening backup: stops if the live data was generated at or after 17:30 IST today, otherwise refreshes
+# A backup reads the live site's data/meta.json first; if it can't read it, it refreshes.
 #
 # Secrets (repo Settings > Secrets and variables > Actions), added by Yash, never written anywhere else:
 #   METABASE_URL, METABASE_API_KEY   the same values as in the local .env
 # GitHub masks secret values in the run logs. The repo is public for now (D-115), so the logs are public too: the pipeline
 # prints only counts and percentiles, never project rows.
 #
-# Safety: if the refresh or the build fails, nothing is published and yesterday's site stays live. The build refuses to run if
+# Safety: if the refresh or the build fails, nothing is published and the previous site stays live. The build refuses to run if
 # any email address or phone number is in the data (pipeline/common/privacy.py). No data is committed to the repo: the site is
 # handed to Pages as a short-lived artifact (1 day) and the runner is wiped after each run.
 # Publishing (D-120): a 20-second pause before "Publish", one more try a minute later if it fails, then a check that the live
 # site shows this run's data within 12 minutes (otherwise the run is red).
 #
 # One-time repo setting: Settings > Pages > Build and deployment > Source = "GitHub Actions".
-name: Daily refresh (03:47 IST, backup 06:17)
+name: Dashboard refresh (03:47 + 18:11 IST, backups 06:17 + 19:41)
 
 on:
   schedule:
-    - cron: "17 22 * * *"  # 22:17 UTC = 03:47 IST: main run
-    - cron: "47 0 * * *"   # 00:47 UTC = 06:17 IST: backup, refreshes only if the site doesn't show today's data yet
+    # cron is in UTC (IST - 5:30). If you change a backup's line, change the same text in the check job below too.
+    - cron: "17 22 * * *"  # 22:17 UTC = 03:47 IST: morning run
+    - cron: "47 0 * * *"   # 00:47 UTC = 06:17 IST: morning backup
+    - cron: "41 12 * * *"  # 12:41 UTC = 18:11 IST: evening run
+    - cron: "11 14 * * *"  # 14:11 UTC = 19:41 IST: evening backup
   workflow_dispatch: {}
 
 concurrency:
@@ -38,8 +43,8 @@ permissions:
 
 jobs:
   check:
-    name: Backup run - already refreshed today?
-    if: github.event.schedule == '47 0 * * *'
+    name: Backup run - already refreshed?
+    if: github.event.schedule == '47 0 * * *' || github.event.schedule == '11 14 * * *'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -53,31 +58,36 @@ jobs:
         id: check
         env:
           SITE: ${{ steps.pages.outputs.base_url }}
+          # morning backup: any data generated today counts; evening backup: only data generated from 17:30 IST
+          SINCE: ${{ github.event.schedule == '11 14 * * *' && '17:30' || '00:00' }}
         run: |
-          python - <<'PY'
+          python3 - <<'PY'
           import datetime as dt, json, os, urllib.request
-          today = dt.datetime.now(dt.timezone(dt.timedelta(hours=5, minutes=30))).date().isoformat()
+          IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
+          hh, mm = map(int, os.environ["SINCE"].split(":"))
+          since = dt.datetime.now(IST).replace(hour=hh, minute=mm, second=0, microsecond=0)
           url = os.environ["SITE"].rstrip("/") + "/data/meta.json"
+          gen, fresh = "", False
           try:
               req = urllib.request.Request(url, headers={"Cache-Control": "no-cache", "User-Agent": "daily-refresh"})
               with urllib.request.urlopen(req, timeout=30) as r:
                   gen = str(json.load(r).get("generated_at") or "")
+              fresh = dt.datetime.fromisoformat(gen).astimezone(IST) >= since
           except Exception as e:  # can't tell: refresh to be safe
-              print(f"Could not read the live site ({type(e).__name__}).")
-              gen = ""
-          skip = gen[:10] == today
-          msg = (f"Backup run: the site already shows today's data (generated {gen}). Nothing to do." if skip
-                 else f"Backup run: the site shows data generated {gen or 'unknown'}, not today ({today}). Refreshing now.")
+              print(f"Could not read the live site's data date ({type(e).__name__}).")
+          when = since.strftime("%d %b %H:%M IST")
+          msg = (f"Backup run: the site already shows data generated {gen} (from {when} counts). Nothing to do." if fresh
+                 else f"Backup run: the site shows data generated {gen or 'unknown'}, older than {when}. Refreshing now.")
           print(msg)
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-              f.write(f"skip={'true' if skip else 'false'}\n")
+              print(f"skip={'true' if fresh else 'false'}", file=f)
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
-              f.write(msg + "\n")
+              print(msg, file=f)
           PY
 
   refresh:
     needs: check
-    # Runs for the main run and manual runs (check is skipped), and for the backup unless today's data is already live.
+    # Runs for the main runs and manual runs (check is skipped), and for a backup unless fresh data is already live.
     # If the check itself fails, the refresh still runs.
     if: ${{ !cancelled() && needs.check.outputs.skip != 'true' }}
     runs-on: ubuntu-latest
@@ -155,7 +165,7 @@ jobs:
                   break
               if time.time() > deadline:
                   msg = (f"The live site still shows data generated {live}, not this run's {built}, 12 minutes after publishing: "
-                         "GitHub Pages has not switched to the new build. Re-run the workflow (or wait for the 06:17 backup).")
+                         "GitHub Pages has not switched to the new build. Re-run the workflow (or wait for the next backup run).")
                   print(f"::error::{msg}")
                   with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
                       f.write(msg + "\n")

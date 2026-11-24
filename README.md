@@ -2,7 +2,7 @@
 
 Tracking dashboard for SolarSquare Ops leadership: HOTO → installation → commissioning, TAT breaches, QHSE, escalations, subsidy and finance cases.
 
-**Status:** V3 dashboard (Overview, # of HOTOs, Yesterday, Needs action and every module page), refreshed and published every morning at 03:47 IST, with a backup run at 06:17 IST, by `.github/workflows/daily-refresh.yml` on GitHub Pages (D-114, D-115, D-119). The link is public with privacy guards: the build stops if any email or phone number is in the data.
+**Status:** V3 dashboard (Overview, # of HOTOs, Yesterday, Needs action and every module page), refreshed and published twice a day, at 03:47 and 18:11 IST with backup runs at 06:17 and 19:41 IST, by `.github/workflows/daily-refresh.yml` on GitHub Pages (D-114, D-115, D-119, D-121). The link is public with privacy guards: the build stops if any email or phone number is in the data.
 
 > **This GitHub repo is a temporary public copy** (D-115) until the dashboard moves to SolarSquare's own repo and domain. It holds only what the daily job runs on (`pipeline/`, `sql/extract/`, `config/seed/`, `web/`). The handover docs linked below (`CONTEXT.md`, `docs/`, `CHANGELOG.md`) and the reference SQL are kept in the full project copy and move with it.
 

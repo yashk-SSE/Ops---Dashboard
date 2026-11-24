@@ -1,6 +1,11 @@
-# Daily refresh of the Ops Dashboard (D-114, host D-115): pull fresh data from Metabase, rebuild the site and publish it on
-# GitHub Pages. Runs every day at 04:00 IST (22:30 UTC the evening before). GitHub can start scheduled runs a few minutes late
-# at busy times. "Run workflow" on the Actions tab starts one by hand.
+# Daily refresh of the Ops Dashboard (D-114, host D-115, schedule D-119): pull fresh data from Metabase, rebuild the site and
+# publish it on GitHub Pages. "Run workflow" on the Actions tab starts one by hand (always a full refresh).
+#
+# Schedule (D-119). GitHub starts scheduled runs on a best-effort basis: they can start late or be skipped (24 Nov 2026: the
+# 04:00 IST run never started). So there are two:
+#   03:47 IST  main run, off the busy :00 / :30 marks
+#   06:17 IST  backup: first reads the live site's data/meta.json and stops if it was already generated today (IST);
+#              otherwise it does the full refresh
 #
 # Secrets (repo Settings > Secrets and variables > Actions), added by Yash, never written anywhere else:
 #   METABASE_URL, METABASE_API_KEY   the same values as in the local .env
@@ -12,11 +17,12 @@
 # handed to Pages as a short-lived artifact (1 day) and the runner is wiped after each run.
 #
 # One-time repo setting: Settings > Pages > Build and deployment > Source = "GitHub Actions".
-name: Daily refresh (04:00 IST)
+name: Daily refresh (03:47 IST, backup 06:17)
 
 on:
   schedule:
-    - cron: "30 22 * * *"  # 22:30 UTC = 04:00 IST
+    - cron: "17 22 * * *"  # 22:17 UTC = 03:47 IST: main run
+    - cron: "47 0 * * *"   # 00:47 UTC = 06:17 IST: backup, refreshes only if the site doesn't show today's data yet
   workflow_dispatch: {}
 
 concurrency:
@@ -29,7 +35,49 @@ permissions:
   id-token: write   # required by actions/deploy-pages
 
 jobs:
+  check:
+    name: Backup run - already refreshed today?
+    if: github.event.schedule == '47 0 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    steps:
+      - name: Find the live site
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Read the live site's data date
+        id: check
+        env:
+          SITE: ${{ steps.pages.outputs.base_url }}
+        run: |
+          python - <<'PY'
+          import datetime as dt, json, os, urllib.request
+          today = dt.datetime.now(dt.timezone(dt.timedelta(hours=5, minutes=30))).date().isoformat()
+          url = os.environ["SITE"].rstrip("/") + "/data/meta.json"
+          try:
+              req = urllib.request.Request(url, headers={"Cache-Control": "no-cache", "User-Agent": "daily-refresh"})
+              with urllib.request.urlopen(req, timeout=30) as r:
+                  gen = str(json.load(r).get("generated_at") or "")
+          except Exception as e:  # can't tell: refresh to be safe
+              print(f"Could not read the live site ({type(e).__name__}).")
+              gen = ""
+          skip = gen[:10] == today
+          msg = (f"Backup run: the site already shows today's data (generated {gen}). Nothing to do." if skip
+                 else f"Backup run: the site shows data generated {gen or 'unknown'}, not today ({today}). Refreshing now.")
+          print(msg)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"skip={'true' if skip else 'false'}\n")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write(msg + "\n")
+          PY
+
   refresh:
+    needs: check
+    # Runs for the main run and manual runs (check is skipped), and for the backup unless today's data is already live.
+    # If the check itself fails, the refresh still runs.
+    if: ${{ !cancelled() && needs.check.outputs.skip != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 75
     environment:

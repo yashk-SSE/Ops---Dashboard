@@ -4,7 +4,7 @@
 //     ready to install and stuck; a cluster's name opens its push panel.
 //  2. Trend: installs vs plan by day / week / month, or this month cumulative.
 //  3. Split: installs by HOTO age (M0 / M1 / M2+) or by lane.
-//  4. Project list (installs in the period).  5. Month on month.
+//  4. Month on month (above the list, D-123).  5. Project list (installs in the period).
 import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, monthKey, monthBounds, monthLabel, monthsBetween, activeFilterDims } from "../data.js";
 import { fmtInt } from "../stats.js";
@@ -161,17 +161,18 @@ export function render(main, { data, state, setState, ctx }) {
     box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["age", "HOTO age"], ["lane", "Lane"]], split, (v) => setState({ instSplit: v }), "Split")]),
       dataTable([{ key: "name", label: "Cluster" }, { key: "n", label: "Installs", num: true, fmt: fmtInt }, ...cats.map(([k, name]) => ({ key: `c_${k}`, label: name, num: true, fmt: sCell(k, name) }))], sRows, { sortKey: "n", sortDir: -1, maxHeight: 520, footer: sTot })])));
 
-  // ---------------- 4 · project list
-  main.append(block(4, "Installs in the period", `${fmtInt(curAll.length)} installs · ${ctx.curRange}`,
-    box(projectList(list.cols, curAll.map(list.row), { searchKeys: list.cols.filter((x) => !x.num).map((x) => x.key), sortKey: "installed", sortDir: -1, filename: `installs_${ctx.key}.csv`, noun: "installs" }))));
+  // ---------------- 5 · project list (shown below the month on month)
+  const listBlock = block(5, "Installs in the period", `${fmtInt(curAll.length)} installs · ${ctx.curRange}`,
+    box(projectList(list.cols, curAll.map(list.row), { searchKeys: list.cols.filter((x) => !x.num).map((x) => x.key), sortKey: "installed", sortDir: -1, filename: `installs_${ctx.key}.csv`, noun: "installs" })));
+  main.append(listBlock);  // the month on month goes in above it (D-123)
 
-  // ---------------- 5 · month on month
+  // ---------------- 4 · month on month (inserted above the list, D-123)
   const metrics = [
     { id: "inst", label: "Installations", src: "f", kind: "count", good: "up", value: (rs, r) => installed(rs, r).length, pick: installed, hint: "Installation task 039B done" },
     { id: "m0", label: "Installs · M0 (HOTO this month)", src: "f", kind: "count", good: "up", value: (rs, r) => byAge(0)(rs, r).length, pick: byAge(0) },
     { id: "m1", label: "Installs · M1 (HOTO last month)", src: "f", kind: "count", good: "up", value: (rs, r) => byAge(1)(rs, r).length, pick: byAge(1) },
     { id: "m2", label: "Installs · M2+ (older HOTOs)", src: "f", kind: "count", good: "up", value: (rs, r) => byAge(2)(rs, r).length, pick: byAge(2) },
   ];
-  main.append(block(5, "Month on month", `${planSet.size ? "Plan clusters · " : ""}installations by HOTO age · month to date and full months, last 6 months`,
-    momTables(metrics, ctx, { f: { file: f, ci: c, rows: scoped, list } }, { state, setState })));
+  main.insertBefore(block(4, "Month on month", `${planSet.size ? "Plan clusters · " : ""}installations by HOTO age · month to date and full months, last 6 months`,
+    momTables(metrics, ctx, { f: { file: f, ci: c, rows: scoped, list } }, { state, setState })), listBlock);
 }

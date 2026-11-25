@@ -4,7 +4,7 @@
 //  2. Trend: M0 / M1 / M2 conversion by month, or HOTO -> install P50 / P90 by month / week / day.
 //  3. HOTO-day skew (Prasanna's TAT brief): share of HOTOs installed in the same month, by HOTO day of month.
 //  4. Cluster x lane TAT with the network's best per lane (the brief's "art of the possible").
-//  5. Cluster x stage (Pre-RTI / RTI / Post-RTI, or OMS status).  6. Not-installed list.  7. Month on month.
+//  5. Cluster x stage (Pre-RTI / RTI / Post-RTI, or OMS status).  6. Month on month (above the list, D-123).  7. Not-installed list.
 // Definitions: docs/metrics/p1-hoto-to-install.md, docs/metrics/stage-glossary.md, docs/dashboard/redesign-v3-pages-proposal.md.
 import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, monthKey, monthBounds, monthLabel, monthsBetween, shiftMonth } from "../data.js";
@@ -183,12 +183,13 @@ export function render(main, { data, state, setState, ctx }) {
       stageOf: view === "oms" ? omsOf : stageOf, order: view === "oms" ? OMS_ORDER : stages.map((s) => s.name),
       colGroups: view === "oms" ? null : RTI_GROUPS, colLabel: (s) => s.replace(" (P1 collected / RFD)", "") }))));
 
-  // ---------------- 6 · not-installed list
+  // ---------------- 7 · not-installed list (shown below the month on month)
   const pipe = M.p1Pending(data, state);
-  main.append(block(6, "Not installed: project list", `${fmtInt(pipe.length)} projects · live · oldest HOTO first${state.hideCancelled ? " · active only" : " · active, on-hold and seeking cancellation"}`,
-    box(projectList(lateCols, [...pipe].sort((a, b) => b[pci.days_since_hoto] - a[pci.days_since_hoto]).map(lateRow), { searchKeys: pendList.cols.filter((x) => !x.num).map((x) => x.key), sortKey: "days", sortDir: -1, filename: "hoto_to_install_pipeline.csv" }))));
+  const listBlock = block(7, "Not installed: project list", `${fmtInt(pipe.length)} projects · live · oldest HOTO first${state.hideCancelled ? " · active only" : " · active, on-hold and seeking cancellation"}`,
+    box(projectList(lateCols, [...pipe].sort((a, b) => b[pci.days_since_hoto] - a[pci.days_since_hoto]).map(lateRow), { searchKeys: pendList.cols.filter((x) => !x.num).map((x) => x.key), sortKey: "days", sortDir: -1, filename: "hoto_to_install_pipeline.csv" })));
+  main.append(listBlock);  // the month on month goes in above it (D-123)
 
-  // ---------------- 7 · month on month
+  // ---------------- 6 · month on month (inserted above the list, D-123)
   const convM = (k) => (rs, r) => conv(rs, r, k).pct, convB = (k) => (rs, r) => conv(rs, r, k).base, h2i = (q) => (rs, r) => M.hotoToInstall(data, rs, r)[q];
   const metrics = [
     { id: "hotos", label: "HOTOs", src: "f", kind: "count", good: "up", value: (rs, r) => rs.filter((x) => inR(x[ci.hoto_day], r)).length, pick: (rs, r) => rs.filter((x) => inR(x[ci.hoto_day], r)) },
@@ -199,6 +200,6 @@ export function render(main, { data, state, setState, ctx }) {
     { id: "h2i75", label: "HOTO → install P75", src: "i", kind: "days", good: "down", value: h2i("p75"), base: (rs, r) => M.hotoToInstall(data, rs, r).count },
     { id: "h2i90", label: "HOTO → install P90", src: "i", kind: "days", good: "down", value: h2i("p90"), base: (rs, r) => M.hotoToInstall(data, rs, r).count },
   ];
-  main.append(block(7, "Month on month", "Month to date and full months · M0 / M1 / M2 = share of each HOTO month installed in the same, next and following month",
-    momTables(metrics, ctx, { f: { file: f, ci, rows, list: hotoList }, i: { file: p2, ci: p2.ci, rows: p2r, list: p2FactList(p2) } }, { state, setState })));
+  main.insertBefore(block(6, "Month on month", "Month to date and full months · M0 / M1 / M2 = share of each HOTO month installed in the same, next and following month",
+    momTables(metrics, ctx, { f: { file: f, ci, rows, list: hotoList }, i: { file: p2, ci: p2.ci, rows: p2r, list: p2FactList(p2) } }, { state, setState })), listBlock);
 }

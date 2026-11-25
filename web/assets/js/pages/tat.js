@@ -3,7 +3,7 @@
 // stages completed in the last 6 full months, ALL India (D-107: the same yardstick whatever the filters). An open project is
 // "late" when its days in stage pass the stage's limit by the global stuck rule (India P90, or 2 x India P50; D-111).
 //  1. Stages (India benchmarks) and clusters (BAU / Expansion folds): late per stage.  2. Trend: stage P50 by month / week.
-//  3. Split: stage x lane.  4. Days in stage.  5. Open project-stages list.  6. Month on month (stage P50 / P75 / P90).
+//  3. Split: stage x lane.  4. Days in stage.  5. Month on month (stage P50 / P75 / P90; above the list, D-123).  6. Open project-stages list.
 import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, monthBounds, monthLabel, monthsBetween } from "../data.js";
 import { fmtInt, pct, tatSummary, percentile } from "../stats.js";
@@ -131,12 +131,13 @@ export function render(main, { data, state, setState, ctx }) {
   main.append(block(4, "How long they have been in their stage", `Open projects (${holdOn ? "active + on-hold" : "active"}) by days in the current stage`,
     box(dataTable([{ key: "name", label: "Stage" }, { key: "n", label: "Open", num: true, fmt: fmtInt }, ...AGE.map(([, , lb]) => ({ key: lb, label: lb, num: true, fmt: ageCell(lb) }))], ageRows, { maxHeight: 320 }))));
 
-  // ---------------- 5 · open project-stages list
+  // ---------------- 6 · open project-stages list (shown below the month on month)
   const all = STAGES.flatMap((s) => s.items.map(listRow(s)));
-  main.append(block(5, "Open projects by stage: list", `${fmtInt(all.length)} project-stages · a project waiting for design, permit and payment shows once per stage`,
-    box(projectList(listCols, all, { searchKeys: ["sseid", "cluster", "cell", "stage", "com", "late"], sortKey: "days", sortDir: -1, filename: "tat_sla_open.csv" }))));
+  const listBlock = block(6, "Open projects by stage: list", `${fmtInt(all.length)} project-stages · a project waiting for design, permit and payment shows once per stage`,
+    box(projectList(listCols, all, { searchKeys: ["sseid", "cluster", "cell", "stage", "com", "late"], sortKey: "days", sortDir: -1, filename: "tat_sla_open.csv" })));
+  main.append(listBlock);  // the month on month goes in above it (D-123)
 
-  // ---------------- 6 · month on month
+  // ---------------- 5 · month on month (inserted above the list, D-123)
   const metrics = [];
   for (const s of STAGES) {
     const q = (k) => (rs, r) => tatSummary(s.done(rs, r))[k];
@@ -144,6 +145,6 @@ export function render(main, { data, state, setState, ctx }) {
     metrics.push({ id: `${s.id}75`, label: `${s.name} P75`, src: s.src, kind: "days", good: "down", value: q("p75"), base: (rs, r) => s.done(rs, r).length });
     metrics.push({ id: `${s.id}90`, label: `${s.name} P90`, src: s.src, kind: "days", good: "down", value: q("p90"), base: (rs, r) => s.done(rs, r).length });
   }
-  main.append(block(6, "Month on month", "Stage TAT P50 / P75 / P90 by month of completion · month to date and full months",
-    momTables(metrics, ctx, { p1: { file: f1, ci: c1, rows: p1r }, p2: { file: f2, ci: c2, rows: p2r } }, { state, setState })));
+  main.insertBefore(block(5, "Month on month", "Stage TAT P50 / P75 / P90 by month of completion · month to date and full months",
+    momTables(metrics, ctx, { p1: { file: f1, ci: c1, rows: p1r }, p2: { file: f2, ci: c2, rows: p2r } }, { state, setState })), listBlock);
 }

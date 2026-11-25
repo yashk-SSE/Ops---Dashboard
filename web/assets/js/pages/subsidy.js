@@ -5,7 +5,7 @@
 //  1. Cluster table (BAU / Expansion folds): backlog, over 30 days in stage, vendor selection pending, disbursed MTD vs LMTD,
 //     commissioning -> disbursed P50, commissioned MTD (inflow).
 //  2. Trend: disbursed (bars) vs commissioned (line), month / week (OMS records disbursals in batches, so days read badly).
-//  3. Split: stage x days in stage.  4. Cluster x stage (stage order).  5. Backlog list (or the old no-status list).  6. Month on month.
+//  3. Split: stage x days in stage.  4. Cluster x stage (stage order).  5. Month on month (above the list, D-123).  6. Backlog list (or the old no-status list).
 import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, bucketOf, matcher, monthBounds, monthLabel, monthsBetween } from "../data.js";
 import { fmtInt, tatSummary } from "../stats.js";
@@ -96,14 +96,15 @@ export function render(main, { data, state, setState, ctx }) {
   main.append(block(4, "Where the backlog sits: cluster × stage", `${fmtInt(back.length)} in backlog · live · stages in order (Vendor selection → PCR → DISCOM inspection → Redeem → Disbursal) · late = more than 30 days in the stage`,
     box(stageMatrix({ items: back, groupOf: cl, stageOf: stg, order: f.stages, late: (x) => inStage(x) > 30, onCell: (xs, title) => openRows(title, xs), lateWord: "over 30 days" }))));
 
-  // ---------------- 5 · list (backlog, or the old no-status projects)
+  // ---------------- 6 · list (backlog, or the old no-status projects; shown below the month on month)
   const which = state.subList === "old" ? "old" : "back";
   const listRows = which === "back" ? back : oldNo;
-  main.append(block(5, which === "back" ? "Backlog: project list" : "No status, commissioned before Oct 2026", which === "back" ? `${fmtInt(back.length)} projects · longest in stage first` : `${fmtInt(oldNo.length)} projects · not in the backlog (the tracker leaves them out) · never got a subsidy status (D-90)`,
+  const listBlock = block(6, which === "back" ? "Backlog: project list" : "No status, commissioned before Oct 2026", which === "back" ? `${fmtInt(back.length)} projects · longest in stage first` : `${fmtInt(oldNo.length)} projects · not in the backlog (the tracker leaves them out) · never got a subsidy status (D-90)`,
     el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["back", `Backlog (${fmtInt(back.length)})`], ["old", `No status, before Oct (${fmtInt(oldNo.length)})`]], which, (v) => setState({ subList: v }), "List")]),
-    box(projectList(list.cols, [...listRows].sort((a, b) => (inStage(b) ?? -1) - (inStage(a) ?? -1)).map(list.row), { searchKeys: list.cols.filter((x) => !x.num).map((x) => x.key), sortKey: "days", sortDir: -1, filename: which === "back" ? "subsidy_backlog.csv" : "subsidy_no_status_old.csv" }))));
+    box(projectList(list.cols, [...listRows].sort((a, b) => (inStage(b) ?? -1) - (inStage(a) ?? -1)).map(list.row), { searchKeys: list.cols.filter((x) => !x.num).map((x) => x.key), sortKey: "days", sortDir: -1, filename: which === "back" ? "subsidy_backlog.csv" : "subsidy_no_status_old.csv" })));
+  main.append(listBlock);  // the month on month goes in above it (D-123)
 
-  // ---------------- 6 · month on month
+  // ---------------- 5 · month on month (inserted above the list, D-123)
   const stageCount = (name) => (rs) => rs.filter((x) => x[c.in_backlog] && stg(x) === name).length;
   const metrics = [
     { id: "disb", label: "Subsidy disbursed", src: "s", kind: "count", good: "up", value: (rs, r) => (ok(r) ? disbursed(rs, r).length : null), pick: disbursed },
@@ -113,6 +114,6 @@ export function render(main, { data, state, setState, ctx }) {
     { id: "backlog", label: "Subsidy backlog (now)", src: "s", kind: "now", good: "down", value: (rs) => rs.filter((x) => x[c.in_backlog]).length },
     { id: "vsp", label: "Vendor selection pending (now)", src: "s", kind: "now", good: "down", value: stageCount(VSP) },
   ];
-  main.append(block(6, "Month on month", "Disbursals by the month OMS recorded them (from Oct 2026; earlier months bulk-loaded) · commissioned by month of commissioning",
-    momTables(metrics, ctx, { s: { file: f, ci: c, rows, list } }, { state, setState })));
+  main.insertBefore(block(5, "Month on month", "Disbursals by the month OMS recorded them (from Oct 2026; earlier months bulk-loaded) · commissioned by month of commissioning",
+    momTables(metrics, ctx, { s: { file: f, ci: c, rows, list } }, { state, setState })), listBlock);
 }

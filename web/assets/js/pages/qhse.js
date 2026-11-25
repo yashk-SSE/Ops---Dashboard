@@ -3,7 +3,7 @@
 // Physical-audit punch points by default; "+ IC audit fails" also counts failed IC-audit items (D-82).
 //  1. Cluster table (BAU / Expansion folds): audited vs LMTD, % ZT, % ZT + High, open Z+H, open > 30 days, closure P50, repeat ICs / vendors.
 //  2. Trend: sites audited (bars) vs sites with ZT + High (line).  3. Split: punch points by severity or component.
-//  4. Open Z+H sites by days since audit.  5. Lists: open sites, open punch points, repeat ICs, repeat vendors.  6. Month on month.
+//  4. Open Z+H sites by days since audit.  5. Month on month (above the lists, D-123).  6. Lists: open sites, open punch points, repeat ICs, repeat vendors.
 import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, bucketOf, matcher, monthBounds, monthLabel, monthsBetween } from "../data.js";
 import { fmtInt, pct, tatSummary } from "../stats.js";
@@ -126,7 +126,7 @@ export function render(main, { data, state, setState, ctx }) {
   main.append(block(4, "Open Z+H: how long since audit", `${fmtInt(openAll.length)} sites with an open Zero Tolerance or High point · live · days since the audit`,
     box(dataTable([{ key: "name", label: "Cluster" }, { key: "n", label: "Open Z+H sites", num: true, fmt: fmtInt }, ...bl.map((b) => ({ key: `b_${b}`, label: b, num: true, fmt: aCell(b) }))], aRows, { sortKey: "n", sortDir: -1, maxHeight: 480, footer: aTot }))));
 
-  // ---------------- 5 · lists
+  // ---------------- 6 · lists (shown below the month on month)
   const which = ["sites", "pps", "ic", "ven"].includes(state.qhseList) ? state.qhseList : "sites";
   const facts = f.facts;
   const ppRows = ppAll.filter((p) => label(f, "status", p[pc.status]) === "Open").map((p) => { const s = facts[p[pc.site]]; return {
@@ -138,11 +138,12 @@ export function render(main, { data, state, setState, ctx }) {
       { key: "code", label: "PP code" }, { key: "component", label: "Component" }, { key: "issue", label: "Issue" }, { key: "audited", label: "Audited", fmt: fmtDay, csv: fmtDay }, { key: "days", label: "Days open", num: true }, { key: "ic", label: "IC" }, { key: "vendor", label: "Vendor" }],
       ppRows, { searchKeys: ["sseid", "cluster", "cell", "code", "ic", "vendor"], sortKey: "days", sortDir: -1, filename: "qhse_open_punch_points.csv", noun: "punch points" })
     : projectList(repCols(which === "ic" ? "IC" : "Vendor"), which === "ic" ? icRep : venRep, { searchKeys: ["name", "cluster", "sites"], sortKey: "zt", sortDir: -1, filename: which === "ic" ? "qhse_repeat_ics.csv" : "qhse_repeat_vendors.csv", noun: which === "ic" ? "ICs" : "vendors" });
-  main.append(block(5, "Lists", "Open Z+H sites, open punch points, and ICs / vendors with 2+ ZT sites in the same cluster in the last 30 days (warning / training)",
+  const listBlock = block(6, "Lists", "Open Z+H sites, open punch points, and ICs / vendors with 2+ ZT sites in the same cluster in the last 30 days (warning / training)",
     el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["sites", `Open Z+H sites (${fmtInt(openAll.length)})`], ["pps", `Open punch points (${fmtInt(ppRows.length)})`], ["ic", `Repeat ICs (${icRep.length})`], ["ven", `Repeat vendors (${venRep.length})`]], which, (v) => setState({ qhseList: v }), "List")]),
-    box(listNode)));
+    box(listNode));
+  main.append(listBlock);  // the month on month goes in above it (D-123)
 
-  // ---------------- 6 · month on month
+  // ---------------- 5 · month on month (inserted above the lists, D-123)
   const share = (col) => (rs, r) => { const b = baseRows(rs, r); return b.length ? pct(b.filter((x) => x[col]).length, b.length) : null; };
   const metrics = [
     { id: "audited", label: "Sites audited", src: "q", kind: "count", good: "up", value: (rs, r) => audited(rs, r).length, pick: audited },
@@ -152,5 +153,5 @@ export function render(main, { data, state, setState, ctx }) {
     { id: "close50", label: "Closure TAT P50", src: "q", kind: "days", good: "down", minBase: 15, value: (rs, r) => tatSummary(rectified(rs, r)).p50, base: (rs, r) => rectified(rs, r).length },
     { id: "close90", label: "Closure TAT P90", src: "q", kind: "days", good: "down", minBase: 15, value: (rs, r) => tatSummary(rectified(rs, r)).p90, base: (rs, r) => rectified(rs, r).length },
   ];
-  main.append(block(6, "Month on month", "Month to date and full months, last 6 months", momTables(metrics, ctx, { q: { file: f, ci: c, rows, list } }, { state, setState })));
+  main.insertBefore(block(5, "Month on month", "Month to date and full months, last 6 months", momTables(metrics, ctx, { q: { file: f, ci: c, rows, list } }, { state, setState })), listBlock);
 }

@@ -3,7 +3,7 @@
 // Closure TAT and aging buckets as Q-1767 (IST calendar days). "Open too long" = past the closure limit by the global stuck rule
 // (India P90, or 2 x India P50, of tickets closed in the last 6 full months).
 //  1. Cluster table (BAU / Expansion folds).  2. Trend: raised vs closed.  3. Split: by level or issue type.
-//  4. Open tickets by days open.  5. Open ticket list.  6. Month on month.
+//  4. Open tickets by days open.  5. Month on month (above the list, D-123).  6. Open ticket list.
 import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, bucketOf, matcher, monthBounds, monthLabel, monthsBetween } from "../data.js";
 import { fmtInt, pct, tatSummary } from "../stats.js";
@@ -105,11 +105,12 @@ export function render(main, { data, state, setState, ctx }) {
   main.append(block(4, "Open tickets: how long open", `${fmtInt(open.length)} open · live · buckets as the CX ticket report (Q-1767)`,
     box(dataTable([{ key: "name", label: "Level" }, { key: "n", label: "Open", num: true, fmt: fmtInt }, ...bl.map((b) => ({ key: `b_${b}`, label: b, num: true, fmt: aCell(b) }))], aRows, { maxHeight: 380, footer: aTot }))));
 
-  // ---------------- 5 · open ticket list
-  main.append(block(5, "Open tickets: list", `${fmtInt(open.length)} tickets · oldest first · ticket id and SSE ID only (no customer names or subjects)`,
-    box(projectList(list.cols, [...open].sort((a, b) => a[c.created_day] - b[c.created_day]).map(list.row), { searchKeys: list.cols.filter((x) => !x.num).map((x) => x.key), sortKey: "created", sortDir: 1, filename: "open_escalations.csv", noun: "tickets" }))));
+  // ---------------- 6 · open ticket list (shown below the month on month)
+  const listBlock = block(6, "Open tickets: list", `${fmtInt(open.length)} tickets · oldest first · ticket id and SSE ID only (no customer names or subjects)`,
+    box(projectList(list.cols, [...open].sort((a, b) => a[c.created_day] - b[c.created_day]).map(list.row), { searchKeys: list.cols.filter((x) => !x.num).map((x) => x.key), sortKey: "created", sortDir: 1, filename: "open_escalations.csv", noun: "tickets" })));
+  main.append(listBlock);  // the month on month goes in above it (D-123)
 
-  // ---------------- 6 · month on month
+  // ---------------- 5 · month on month (inserted above the list, D-123)
   const metrics = [
     { id: "raised", label: "Tickets raised", src: "e", kind: "count", good: "down", value: (rs2, r) => created(rs2, r).length, pick: created },
     { id: "trueEsc", label: "True escalations (L2–L5 + Red Alert)", src: "e", kind: "count", good: "down", minBase: 3, value: (rs2, r) => created(rs2, r).filter((x) => x[c.true_esc]).length },
@@ -117,5 +118,5 @@ export function render(main, { data, state, setState, ctx }) {
     { id: "tat50", label: "Closure TAT P50", src: "e", kind: "days", good: "down", value: (rs2, r) => tatSummary(closedTat(rs2, r)).p50, base: (rs2, r) => closedTat(rs2, r).length },
     { id: "tat90", label: "Closure TAT P90", src: "e", kind: "days", good: "down", value: (rs2, r) => tatSummary(closedTat(rs2, r)).p90, base: (rs2, r) => closedTat(rs2, r).length },
   ];
-  main.append(block(6, "Month on month", "Tickets by month of creation · TAT by month of closing · month to date and full months", momTables(metrics, ctx, { e: { file: f, ci: c, rows, list } }, { state, setState })));
+  main.insertBefore(block(5, "Month on month", "Tickets by month of creation · TAT by month of closing · month to date and full months", momTables(metrics, ctx, { e: { file: f, ci: c, rows, list } }, { state, setState })), listBlock);
 }

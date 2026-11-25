@@ -3,7 +3,7 @@
 //     (global stuck rule, India-wide install -> commissioning), over 30 days, install -> commissioning P50 / P75 / P90.
 //  2. Trend: commissioned (bars) vs installs (line), month / week / day.
 //  3. Split: delay reason (CT reason or system tag) by cluster.
-//  4. Cluster x current step (chain order).  5. Pending list.  6. Month on month.
+//  4. Cluster x current step (chain order).  5. Month on month (above the list, D-123).  6. Pending list.
 // Definitions: docs/metrics/p2-install-to-commissioning.md (D-34, D-35, D-42, D-48), step order docs/metrics/stage-glossary.md.
 import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, monthBounds, monthLabel, monthsBetween } from "../data.js";
@@ -106,11 +106,12 @@ export function render(main, { data, state, setState, ctx }) {
     box(stageMatrix({ items: pendSm, groupOf: (x) => label(f, "cluster", x[pci.cluster]), stageOf: (x) => label(f, "substage", x[pci.substage]),
       order: SUB_ORDER, late: (x) => limit != null && x[pci.aging_days] > limit, onCell: (xs, title) => openPend(title, xs), lateWord: `past ${R}` }))));
 
-  // ---------------- 5 · pending list
-  main.append(block(5, "Pending commissioning: project list", `${fmtInt(pend.length)} projects · live · longest wait first${state.hideCancelled ? " · active only" : ""}`,
-    box(projectList(pendList.cols, [...pend].sort((a, b) => b[pci.aging_days] - a[pci.aging_days]).map(pendList.row), { searchKeys: pendList.cols.filter((x) => !x.num).map((x) => x.key), sortKey: "days", sortDir: -1, filename: "pending_commissioning.csv" }))));
+  // ---------------- 6 · pending list (shown below the month on month)
+  const listBlock = block(6, "Pending commissioning: project list", `${fmtInt(pend.length)} projects · live · longest wait first${state.hideCancelled ? " · active only" : ""}`,
+    box(projectList(pendList.cols, [...pend].sort((a, b) => b[pci.aging_days] - a[pci.aging_days]).map(pendList.row), { searchKeys: pendList.cols.filter((x) => !x.num).map((x) => x.key), sortKey: "days", sortDir: -1, filename: "pending_commissioning.csv" })));
+  main.append(listBlock);  // the month on month goes in above it (D-123)
 
-  // ---------------- 6 · month on month
+  // ---------------- 5 · month on month (inserted above the list, D-123)
   const tat = (key) => (rs, r) => tatSummary(closed(rs, r))[key], nClosed = (rs, r) => closed(rs, r).length;
   const metrics = [
     { id: "comm", label: "Commissioned", src: "f", kind: "count", good: "up", value: (rs, r) => rs.filter((x) => inR(x[ci.commissioned_day], r)).length, pick: (rs, r) => rs.filter((x) => inR(x[ci.commissioned_day], r)) },
@@ -119,5 +120,5 @@ export function render(main, { data, state, setState, ctx }) {
     { id: "p75", label: "Install → commissioning P75", src: "f", kind: "days", good: "down", value: tat("p75"), base: nClosed },
     { id: "p90", label: "Install → commissioning P90", src: "f", kind: "days", good: "down", value: tat("p90"), base: nClosed },
   ];
-  main.append(block(6, "Month on month", "Month to date and full months, last 6 months", momTables(metrics, ctx, { f: { file: f, ci, rows, list: factList } }, { state, setState })));
+  main.insertBefore(block(5, "Month on month", "Month to date and full months, last 6 months", momTables(metrics, ctx, { f: { file: f, ci, rows, list: factList } }, { state, setState })), listBlock);
 }

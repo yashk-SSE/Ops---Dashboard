@@ -73,6 +73,17 @@ export function psuList(f, asOf) {
       rfd: x[c.rfd_day], d70: x[c.d70_day], inst: x[c.installed_day] }),
   };
 }
+// D-124: orders (lead with an order date). SSE ID once the project exists; RM and welcome-call result; no customer fields.
+export function orderList(f, asOf) {
+  const c = f.ci, verdict = (v) => (v == null ? "–" : v ? "GTG" : "NGTG");
+  return {
+    cols: [...base, { key: "rm", label: "RM" }, { key: "stage", label: "Lead stage" }, { key: "order", label: "Order", ...day },
+      { key: "days", label: "Days since order", num: true }, { key: "hoto", label: "HOTO", ...day }, { key: "first", label: "First call" },
+      { key: "attempts", label: "Calls", num: true }],
+    row: (x) => ({ ...baseRow(f, c, x), rm: dim(f, c, "rm")(x), stage: dim(f, c, "stage")(x), order: x[c.order_day],
+      days: x[c.order_day] == null ? null : (x[c.hoto_day] ?? asOf) - x[c.order_day], hoto: x[c.hoto_day], first: verdict(x[c.first_gtg]), attempts: x[c.attempts] }),
+  };
+}
 export function subsidyList(f, asOf) {
   const c = f.ci;
   return {

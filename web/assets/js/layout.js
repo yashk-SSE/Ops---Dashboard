@@ -23,6 +23,7 @@ export function fmtKind(kind, v) {
   if (v == null || Number.isNaN(v)) return "–";
   if (kind === "pct") return fmtPct(v);
   if (kind === "days") return `${fmtD(v)} d`;
+  if (kind === "num") return v.toFixed(2);  // D-124: e.g. calls per order
   return fmtInt(v);
 }
 const deltaKind = (kind) => (kind === "pct" ? "pct" : kind === "days" ? "days" : "count");

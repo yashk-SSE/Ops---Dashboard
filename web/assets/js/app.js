@@ -16,6 +16,7 @@ import * as yesterday from "./pages/yesterday.js";
 import * as actions from "./pages/actions.js";
 import * as nbfc from "./pages/nbfc.js";
 import * as psu from "./pages/psu.js";
+import * as order from "./pages/orders.js";
 
 const PAGES = {
   overview: { mod: overview, title: "Overview", icon: "home" },
@@ -31,13 +32,13 @@ const PAGES = {
   tat: { mod: tat, title: "TAT / SLA breach", icon: "clock" },
   nbfc: { mod: nbfc, title: "NBFC cases", icon: "coins" },
   psu: { mod: psu, title: "PSU cases", icon: "bank" },
+  order: { mod: order, title: "Order → HOTO", icon: "route" },
 };
 const NAV = [
   { group: "Summary", items: [["overview"], ["act"], ["day"]] },
-  { group: "Project journey", items: [["hotos"], ["inst"], ["p1"], ["p2"], ["sub"], ["tat"]] },
+  { group: "Project journey", items: [["order"], ["hotos"], ["inst"], ["p1"], ["p2"], ["sub"], ["tat"]] },  // D-124: Order -> HOTO first
   { group: "Loan cases", items: [["nbfc"], ["psu"]] },  // D-122
   { group: "Quality and customer", items: [["qhse"], ["esc"]] },
-  { group: "Coming next", items: [["soon", "Order → HOTO", "route"]] },
 ];
 const STORE_KEY = "opsdash.state.v3";
 const defaults = () => ({

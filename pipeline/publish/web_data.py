@@ -26,7 +26,7 @@ from pipeline.common.privacy import safe_id, scan_for_contacts
 from pipeline.config import REPO_ROOT
 from pipeline.jobs import p1_hoto_to_install as p1
 from pipeline.jobs import p2_install_to_commissioning as p2
-from pipeline.jobs import escalations, loans, qhse, subsidy
+from pipeline.jobs import escalations, loans, orders, qhse, subsidy
 
 OUT = REPO_ROOT / "web" / "data"
 EPOCH = date(2020, 1, 1)
@@ -271,6 +271,28 @@ def publish_loans(today: date, since: date) -> tuple[dict, dict]:
     return ({"rows": len(nf), "bytes": n_size, "extracted_at": extracted_at}, {"rows": len(pf), "bytes": p_size, "extracted_at": extracted_at})
 
 
+def publish_orders(today: date, since: date) -> dict:
+    """Order -> HOTO (D-124): one row per order (lead with an order date). SSE ID, place, stage, RM and welcome-call results only:
+    no customer name, phone, email, address or free-text comment."""
+    projects, rows_in, extracted_at = orders.load_raw()
+    rows, dq = orders.transform(projects, rows_in, today)
+    # the page needs 13 months (trend, month on month) plus every order still waiting: keeps the file small
+    trend_from = add_months(date(today.year, today.month, 1), -12)
+    rows = [r for r in rows if r["order_on"] >= trend_from or (r["hoto_on"] and r["hoto_on"] >= trend_from) or r["status"] == "Waiting"]
+    D = Dict()
+    cols = ["sseid", "region", "cluster", "cell", "lane", "payment_lane", "com", "soh", "zoh", "status", "stage", "oa", "rm",
+            "order_day", "hoto_day", "sc008_day", "call_day", "attempts", "first_gtg", "ngtg_bits", "reasons"]
+    b = lambda v: None if v is None else (1 if v else 0)
+    facts = [[safe_id(r["sseid"]) if r["sseid"] else None, D("region", r["region"]), D("cluster", r["cluster"]), D("cell", r["cell"]), D("lane", r["lane"]),
+              D("payment_lane", r["payment_lane"]), D("com", r["com"]), D("soh", r["soh"]), D("zoh", r["zoh"]), D("status", r["status"]),
+              D("stage", r["stage"]), b(r["oa"]), D("rm", r["rm"]), day(r["order_on"]), day(r["hoto_on"]), day(r["sc008_on"]), day(r["call_on"]),
+              r["attempts"], b(r["first_gtg"]), r["ngtg_bits"],
+              ",".join(str(D("reason", x)) for x in r["reasons"]) or None] for r in rows]
+    size = write("orders.json", {"section": "orders", "extracted_at": extracted_at, "dims": D.values, "cols": cols, "facts": facts,
+                                 "wait_stages": orders.WAIT_STAGES, "rm_sections": [label for _, label in p1.RM_SECTIONS], "data_quality": dq})
+    return {"rows": len(facts), "bytes": size, "extracted_at": extracted_at}
+
+
 def main() -> int:
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -285,17 +307,18 @@ def main() -> int:
     info_esc = publish_escalations(today, since)
     info_sub = publish_subsidy(today, since)
     info_nbfc, info_psu = publish_loans(today, since)
+    info_orders = publish_orders(today, since)
     info_plan = publish_plan()
     # The dashboard's "as of" day = the oldest extract among the sections, so month-to-date is never compared with
     # more days of last month than the data actually covers (e.g. one section refreshed today, another yesterday).
-    extracted = [datetime.fromisoformat(i["extracted_at"]).astimezone(IST).date() for i in (info_p1, info_p2, info_qhse, info_esc, info_sub, info_nbfc) if i.get("extracted_at")]
+    extracted = [datetime.fromisoformat(i["extracted_at"]).astimezone(IST).date() for i in (info_p1, info_p2, info_qhse, info_esc, info_sub, info_nbfc, info_orders) if i.get("extracted_at")]
     data_day = min(extracted + [today])
     wins = {k: [day(a), day(b)] for k, (a, b) in windows(today).items()}
     meta = {
         "generated_at": datetime.now(IST).isoformat(timespec="seconds"), "as_of_day": day(data_day), "as_of": data_day.isoformat(),
         "epoch": EPOCH.isoformat(), "fy": fy_label(today), "since_day": day(since), "trend_from_day": day(trend_from), "windows": wins,
         "windows_prev": {k: [day(a), day(b)] for k, (a, b) in previous_windows(today).items()},
-        "sections": {"p1": info_p1, "p2": info_p2, "qhse": info_qhse, "escalations": info_esc, "subsidy": info_sub, "nbfc": info_nbfc, "psu": info_psu}, "plan": info_plan,
+        "sections": {"p1": info_p1, "p2": info_p2, "qhse": info_qhse, "escalations": info_esc, "subsidy": info_sub, "nbfc": info_nbfc, "psu": info_psu, "orders": info_orders}, "plan": info_plan,
         "lanes": PLAN_LANES,
         "rules": {"timezone": "IST", "tat": "calendar days", "percentile": "inclusive (Sheets PERCENTILE)",
                   "windows": "MTD; L3M / L6M = last complete months; YTD = financial year"},
@@ -305,7 +328,8 @@ def main() -> int:
           f"p2 {info_p2['rows']:,} facts + {info_p2['pending']:,} pending ({info_p2['bytes']/1e6:.1f} MB); "
           f"qhse {info_qhse['rows']:,} sites + {info_qhse['pps']:,} punch points ({info_qhse['bytes']/1e6:.1f} MB); "
           f"escalations {info_esc['rows']:,} tickets ({info_esc['bytes']/1e6:.1f} MB); subsidy {info_sub['rows']:,} projects ({info_sub['bytes']/1e6:.1f} MB); "
-          f"nbfc {info_nbfc['rows']:,} ({info_nbfc['bytes']/1e6:.1f} MB); psu {info_psu['rows']:,} ({info_psu['bytes']/1e6:.1f} MB)")
+          f"nbfc {info_nbfc['rows']:,} ({info_nbfc['bytes']/1e6:.1f} MB); psu {info_psu['rows']:,} ({info_psu['bytes']/1e6:.1f} MB); "
+          f"orders {info_orders['rows']:,} ({info_orders['bytes']/1e6:.1f} MB)")
     return 0
 
 

@@ -29,7 +29,7 @@ from pipeline.config import REPO_ROOT
 WEB = REPO_ROOT / "web"
 JS_ROOT = WEB / "assets" / "js"
 ENTRY = JS_ROOT / "app.js"
-DATA_FILES = ("meta", "p1", "p2", "qhse", "escalations", "subsidy", "nbfc", "psu", "plan")
+DATA_FILES = ("meta", "p1", "p2", "qhse", "escalations", "subsidy", "nbfc", "psu", "orders", "plan")
 
 IMPORT_NAMED = re.compile(r'^import\s*\{([^}]*)\}\s*from\s*"([^"]+)";\s*$')
 IMPORT_STAR = re.compile(r'^import\s*\*\s*as\s+(\w+)\s+from\s*"([^"]+)";\s*$')

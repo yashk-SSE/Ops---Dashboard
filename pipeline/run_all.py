@@ -13,7 +13,7 @@ from pathlib import Path
 import sys
 import time
 
-from pipeline.jobs import escalations, loans, p1_hoto_to_install, p2_install_to_commissioning, qhse, subsidy
+from pipeline.jobs import escalations, loans, orders, p1_hoto_to_install, p2_install_to_commissioning, qhse, subsidy
 from pipeline.publish import web_data
 
 JOBS = [("P2 Install -> Commissioning", p2_install_to_commissioning.main),
@@ -21,7 +21,8 @@ JOBS = [("P2 Install -> Commissioning", p2_install_to_commissioning.main),
         ("QHSE", qhse.main),
         ("Escalations", escalations.main),
         ("Subsidy", subsidy.main),
-        ("NBFC and PSU cases", loans.main)]
+        ("NBFC and PSU cases", loans.main),
+        ("Order -> HOTO", orders.main)]
 
 
 def main(argv: list[str] | None = None) -> int:

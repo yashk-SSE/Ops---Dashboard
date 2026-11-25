@@ -32,7 +32,7 @@ from pipeline.config import REPO_ROOT
 
 WEB = REPO_ROOT / "web"
 DIST = REPO_ROOT / "dist"
-DATA_FILES = ("meta", "p1", "p2", "qhse", "escalations", "subsidy", "nbfc", "psu", "plan")
+DATA_FILES = ("meta", "p1", "p2", "qhse", "escalations", "subsidy", "nbfc", "psu", "orders", "plan")
 LIMIT_BYTES = 25 * 1024 * 1024  # Cloudflare Pages: max size of one file
 
 HEADERS = """/*

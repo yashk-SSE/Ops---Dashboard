@@ -52,6 +52,27 @@ export function escTicketList(f) {
     row: (x) => ({ ticket: x[c.ticket_id], ...baseRow(f, c, x), level: dim(f, c, "level")(x), created: x[c.created_day], status: dim(f, c, "status")(x), age: x[c.is_open] ? null : x[c.closure_tat] }),
   };
 }
+// D-122: NBFC / PSU cases waiting for the next loan step. Lender and step only: no bank or loan-amount fields.
+export function nbfcList(f, asOf) {
+  const c = f.ci;
+  return {
+    cols: [...base, { key: "lender", label: "Lender" }, { key: "step", label: "Lender step" }, { key: "tag", label: "EMI tag" }, { key: "tag2", label: "Sub-reason" },
+      { key: "hoto", label: "HOTO", ...day }, { key: "days", label: "Days since HOTO", num: true }, { key: "inStep", label: "Days in step", num: true }],
+    row: (x) => ({ ...baseRow(f, c, x), lender: dim(f, c, "lender")(x), step: dim(f, c, "step")(x), tag: dim(f, c, "tag")(x), tag2: dim(f, c, "tag2")(x),
+      hoto: x[c.hoto_day], days: x[c.hoto_day] == null ? null : asOf - x[c.hoto_day], inStep: x[c.step_day] == null ? null : asOf - x[c.step_day] }),
+  };
+}
+export function psuList(f, asOf) {
+  const c = f.ci;
+  return {
+    cols: [...base, { key: "lender", label: "Bank" }, { key: "step", label: "Waiting for" }, { key: "hoto", label: "HOTO", ...day },
+      { key: "days", label: "Days since HOTO", num: true }, { key: "inStep", label: "Days in step", num: true },
+      { key: "rfd", label: "RFD", ...day }, { key: "d70", label: "70% received", ...day }, { key: "inst", label: "Installed", ...day }],
+    row: (x) => ({ ...baseRow(f, c, x), lender: dim(f, c, "lender")(x), step: dim(f, c, "step")(x), hoto: x[c.hoto_day],
+      days: x[c.hoto_day] == null ? null : asOf - x[c.hoto_day], inStep: x[c.step_day] == null ? null : asOf - x[c.step_day],
+      rfd: x[c.rfd_day], d70: x[c.d70_day], inst: x[c.installed_day] }),
+  };
+}
 export function subsidyList(f, asOf) {
   const c = f.ci;
   return {

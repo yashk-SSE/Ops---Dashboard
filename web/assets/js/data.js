@@ -71,8 +71,9 @@ async function getJSON(path) {
 }
 
 export async function loadAll() {
-  const [meta, p1, p2, qhse, esc, sub, plan] = await Promise.all([getJSON("data/meta.json"), getJSON("data/p1.json"), getJSON("data/p2.json"),
-    getJSON("data/qhse.json"), getJSON("data/escalations.json"), getJSON("data/subsidy.json"), getJSON("data/plan.json").catch(() => ({ months: {} }))]);
+  const [meta, p1, p2, qhse, esc, sub, plan, nbfc, psu] = await Promise.all([getJSON("data/meta.json"), getJSON("data/p1.json"), getJSON("data/p2.json"),
+    getJSON("data/qhse.json"), getJSON("data/escalations.json"), getJSON("data/subsidy.json"), getJSON("data/plan.json").catch(() => ({ months: {} })),
+    getJSON("data/nbfc.json").catch(() => null), getJSON("data/psu.json").catch(() => null)]);  // D-122: a missing loan file only blanks its page
   for (const f of [p1, p2]) {
     f.ci = indexCols(f.cols);
     f.pci = indexCols(f.pending_cols);
@@ -81,7 +82,8 @@ export async function loadAll() {
   qhse.ppci = indexCols(qhse.pp_cols);
   esc.ci = indexCols(esc.cols);
   sub.ci = indexCols(sub.cols);
-  return { meta, p1, p2, qhse, esc, sub, plan };
+  for (const f of [nbfc, psu]) if (f) f.ci = indexCols(f.cols);
+  return { meta, p1, p2, qhse, esc, sub, plan, nbfc, psu };
 }
 
 // Filters are multi-select: each dim holds a list of labels (empty = all). Old single-value states are read as one-item lists.

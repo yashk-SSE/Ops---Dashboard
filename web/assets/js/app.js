@@ -14,6 +14,8 @@ import * as inst from "./pages/installs.js";
 import * as tat from "./pages/tat.js";
 import * as yesterday from "./pages/yesterday.js";
 import * as actions from "./pages/actions.js";
+import * as nbfc from "./pages/nbfc.js";
+import * as psu from "./pages/psu.js";
 
 const PAGES = {
   overview: { mod: overview, title: "Overview", icon: "home" },
@@ -27,14 +29,15 @@ const PAGES = {
   sub: { mod: sub, title: "Subsidy backlog", icon: "receipt" },
   inst: { mod: inst, title: "Installations vs plan", icon: "calendar" },
   tat: { mod: tat, title: "TAT / SLA breach", icon: "clock" },
+  nbfc: { mod: nbfc, title: "NBFC cases", icon: "coins" },
+  psu: { mod: psu, title: "PSU cases", icon: "bank" },
 };
 const NAV = [
   { group: "Summary", items: [["overview"], ["act"], ["day"]] },
   { group: "Project journey", items: [["hotos"], ["inst"], ["p1"], ["p2"], ["sub"], ["tat"]] },
+  { group: "Loan cases", items: [["nbfc"], ["psu"]] },  // D-122
   { group: "Quality and customer", items: [["qhse"], ["esc"]] },
-  { group: "Coming next", items: [
-    ["soon", "Order → HOTO", "route"], ["soon", "NBFC cases", "coins"], ["soon", "PSU cases", "bank"],
-  ] },
+  { group: "Coming next", items: [["soon", "Order → HOTO", "route"]] },
 ];
 const STORE_KEY = "opsdash.state.v3";
 const defaults = () => ({

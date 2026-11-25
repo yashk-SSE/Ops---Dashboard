@@ -11,7 +11,7 @@ Encoding (keeps files small):
 
 Usage (from the repo root, after the jobs have run):
     python -m pipeline.publish.web_data
-Reads the raw extracts (no Metabase calls). Writes web/data/meta.json, p1.json, p2.json (git-ignored).
+Reads the raw extracts (no Metabase calls). Writes web/data/meta.json, p1.json, p2.json, ... nbfc.json, psu.json (git-ignored).
 """
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ from pipeline.common.privacy import safe_id, scan_for_contacts
 from pipeline.config import REPO_ROOT
 from pipeline.jobs import p1_hoto_to_install as p1
 from pipeline.jobs import p2_install_to_commissioning as p2
-from pipeline.jobs import escalations, qhse, subsidy
+from pipeline.jobs import escalations, loans, qhse, subsidy
 
 OUT = REPO_ROOT / "web" / "data"
 EPOCH = date(2020, 1, 1)
@@ -240,6 +240,37 @@ def publish_subsidy(today: date, since: date) -> dict:
     return {"rows": len(facts), "bytes": size, "extracted_at": extracted_at}
 
 
+def publish_loans(today: date, since: date) -> tuple[dict, dict]:
+    """NBFC and PSU cases (D-122): one row per NBFC / PSU project in scope, in two files. SSE ID, lender, steps and dates only:
+    no customer, bank or loan-amount fields."""
+    projects, comps, journey, extracted_at = loans.load_raw()
+    rows, dq = loans.transform(projects, comps, journey, today)
+    base_cols = ["sseid", "region", "cluster", "cell", "lane", "payment_lane", "com", "soh", "zoh", "state", "later_cancelled", "lender", "step"]
+    base = lambda D, r: [safe_id(r["sseid"]), D("region", r["region"]), D("cluster", r["cluster"]), D("cell", r["cell"]), D("lane", r["lane"]),
+                         D("payment_lane", r["payment_lane"]), D("com", r["com"]), D("soh", r["soh"]), D("zoh", r["zoh"]), D("state", r["state"]),
+                         1 if r["state"] in ("cancelled", "on-hold", "seeking-cancellation") else 0, D("lender", r["lender"]), D("step", r["step"])]
+    # NBFC
+    D = Dict()
+    ncols = base_cols + ["tag", "tag2", "rfd_src", "hoto_day", "rfd_day", "installed_day", "approved_day", "enach_day", "predisb_day",
+                         "disbursed_day", "pap_day", "step_day"]
+    nf = [base(D, r) + [D("tag", r["tag"] or "No tag"), D("tag2", r["tag2"] or "—"), D("rfd_src", r["rfd_src"] or "—"),
+                        day(r["hoto_on"]), day(r["rfd_on"]), day(r["installed_on"]), day(r["approved_on"]), day(r["enach_on"]),
+                        day(r["predisb_on"]), day(r["disbursed_on"]), day(r["pap_on"]), day(r["step_since"])]
+          for r in rows if r["payment_lane"] == "NBFC"]
+    n_size = write("nbfc.json", {"section": "nbfc", "extracted_at": extracted_at, "dims": D.values, "cols": ncols, "facts": nf,
+                                 "steps": loans.NBFC_STEPS, "portal_from": "2026-06-01",
+                                 "data_quality": {k: v for k, v in dq.items() if k.startswith("NBFC") or k == "no_hoto_date"}})
+    # PSU
+    D = Dict()
+    pcols = base_cols + ["hoto_day", "rfd_day", "d70_day", "d30_day", "installed_day", "step_day"] + [f"e{i}" for i in range(len(loans.PSU_STEPS))]
+    pf = [base(D, r) + [day(r["hoto_on"]), day(r["rfd_on"]), day(r["d70_on"]), day(r["d30_on"]), day(r["installed_on"]), day(r["step_since"])]
+          + [day(d) for d in r["entries"]] for r in rows if r["payment_lane"] == "PSU"]
+    p_size = write("psu.json", {"section": "psu", "extracted_at": extracted_at, "dims": D.values, "cols": pcols, "facts": pf,
+                                "steps": [label for _, label in loans.PSU_STEPS], "extra_steps": loans.PSU_EXTRA, "portal_from": "2026-06-01",
+                                "data_quality": {k: v for k, v in dq.items() if k.startswith("PSU") or k == "no_hoto_date"}})
+    return ({"rows": len(nf), "bytes": n_size, "extracted_at": extracted_at}, {"rows": len(pf), "bytes": p_size, "extracted_at": extracted_at})
+
+
 def main() -> int:
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -253,17 +284,18 @@ def main() -> int:
     info_qhse = publish_qhse(today, since)
     info_esc = publish_escalations(today, since)
     info_sub = publish_subsidy(today, since)
+    info_nbfc, info_psu = publish_loans(today, since)
     info_plan = publish_plan()
     # The dashboard's "as of" day = the oldest extract among the sections, so month-to-date is never compared with
     # more days of last month than the data actually covers (e.g. one section refreshed today, another yesterday).
-    extracted = [datetime.fromisoformat(i["extracted_at"]).astimezone(IST).date() for i in (info_p1, info_p2, info_qhse, info_esc, info_sub) if i.get("extracted_at")]
+    extracted = [datetime.fromisoformat(i["extracted_at"]).astimezone(IST).date() for i in (info_p1, info_p2, info_qhse, info_esc, info_sub, info_nbfc) if i.get("extracted_at")]
     data_day = min(extracted + [today])
     wins = {k: [day(a), day(b)] for k, (a, b) in windows(today).items()}
     meta = {
         "generated_at": datetime.now(IST).isoformat(timespec="seconds"), "as_of_day": day(data_day), "as_of": data_day.isoformat(),
         "epoch": EPOCH.isoformat(), "fy": fy_label(today), "since_day": day(since), "trend_from_day": day(trend_from), "windows": wins,
         "windows_prev": {k: [day(a), day(b)] for k, (a, b) in previous_windows(today).items()},
-        "sections": {"p1": info_p1, "p2": info_p2, "qhse": info_qhse, "escalations": info_esc, "subsidy": info_sub}, "plan": info_plan,
+        "sections": {"p1": info_p1, "p2": info_p2, "qhse": info_qhse, "escalations": info_esc, "subsidy": info_sub, "nbfc": info_nbfc, "psu": info_psu}, "plan": info_plan,
         "lanes": PLAN_LANES,
         "rules": {"timezone": "IST", "tat": "calendar days", "percentile": "inclusive (Sheets PERCENTILE)",
                   "windows": "MTD; L3M / L6M = last complete months; YTD = financial year"},
@@ -272,7 +304,8 @@ def main() -> int:
     print(f"published web/data: p1 {info_p1['rows']:,} facts + {info_p1['pending']:,} pipeline ({info_p1['bytes']/1e6:.1f} MB); "
           f"p2 {info_p2['rows']:,} facts + {info_p2['pending']:,} pending ({info_p2['bytes']/1e6:.1f} MB); "
           f"qhse {info_qhse['rows']:,} sites + {info_qhse['pps']:,} punch points ({info_qhse['bytes']/1e6:.1f} MB); "
-          f"escalations {info_esc['rows']:,} tickets ({info_esc['bytes']/1e6:.1f} MB); subsidy {info_sub['rows']:,} projects ({info_sub['bytes']/1e6:.1f} MB)")
+          f"escalations {info_esc['rows']:,} tickets ({info_esc['bytes']/1e6:.1f} MB); subsidy {info_sub['rows']:,} projects ({info_sub['bytes']/1e6:.1f} MB); "
+          f"nbfc {info_nbfc['rows']:,} ({info_nbfc['bytes']/1e6:.1f} MB); psu {info_psu['rows']:,} ({info_psu['bytes']/1e6:.1f} MB)")
     return 0
 
 

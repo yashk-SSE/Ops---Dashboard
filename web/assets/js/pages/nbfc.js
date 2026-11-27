@@ -11,7 +11,7 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, matcher, monthBounds, monthLabel, monthKey, fmtDay } from "../data.js";
 import { fmtInt, tatSummary } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, tierTable, openList, stageMatrix, daySpanOf, daySpanSwitch, chartClusters } from "../layout.js";
+import { momTables, block, tierTable, openList, stageMatrix, daySpanOf, daySpanSwitch, chartClusters, peopleBoard } from "../layout.js";
 import { comboChart } from "../charts.js";
 import { nbfcList } from "../lists.js";
 
@@ -164,12 +164,16 @@ export function render(main, { data, state, setState, ctx }) {
     { id: "e2r", label: "e-NACH done → RFD P50", src: "n", kind: "days", good: "down", hint: "EMI portal, from Jun 2026", value: pOk((rs3, r) => tatSummary(e2r(rs3, r)).p50), base: (rs3, r) => e2r(rs3, r).length },
     { id: "disb", label: "Disbursed by the lender", src: "n", kind: "count", good: "up", hint: "EMI portal, from Jun 2026", value: pOk((rs3, r) => disb(rs3, r).length), pick: disb },
     { id: "r2d", label: "RFD → disbursed P50", src: "n", kind: "days", good: "down", hint: "EMI portal, from Jun 2026", value: pOk((rs3, r) => tatSummary(r2d(rs3, r)).p50), base: (rs3, r) => r2d(rs3, r).length },
-    { id: "wait", label: "Waiting for RFD (now)", src: "n", kind: "now", good: "down", value: () => waiting.length },
+    { id: "wait", label: "Waiting for RFD (now)", src: "n", kind: "now", good: "down",
+      value: (rs) => rs.filter((x) => okState(label(f, "state", x[c.state])) && x[c.rfd_day] == null && x[c.installed_day] == null && x[c.hoto_day] != null).length },
   ];
-  main.append(block(5, "Month on month", "Month to date and full months · HOTOs by HOTO date, payment ready and TATs by the date the step finished · portal steps from Jun 2026",
-    momTables(metrics, ctx, { n: { file: f, ci: c, rows, list }, p: { file: p1f, ci: { ...p1c, lane: undefined }, rows: p1rows } }, { state, setState })));  // the share row stays all lanes: no lane switch on it
+  const pSrc = { n: { file: f, ci: c, rows, list }, p: { file: p1f, ci: { ...p1c, lane: undefined }, rows: p1rows } };
+  main.append(block(5, "People: COM / SOH / ZOH / AD / AVP", `${ctx.curText} · ${ctx.curRange} · pick a level and a metric: leaderboard / laggerboard on that metric (counts on the change vs the same days last month, rates and TATs on their value; people with little volume left out), every metric in the table below · AD / AVP once the mapping is shared`,
+    peopleBoard(metrics, ctx, pSrc, { state, setState, page: "nbfc" })));  // D-126
+  main.append(block(6, "Month on month", "Month to date and full months · HOTOs by HOTO date, payment ready and TATs by the date the step finished · portal steps from Jun 2026",
+    momTables(metrics, ctx, pSrc, { state, setState })));  // the share row stays all lanes: no lane switch on it
 
   // ---------------- 6 · waiting list
-  main.append(block(6, "Waiting for RFD: project list", `${fmtInt(waiting.length)} projects · live · longest since HOTO first`,
+  main.append(block(7, "Waiting for RFD: project list", `${fmtInt(waiting.length)} projects · live · longest since HOTO first`,
     box(projectList(lateCols, [...waiting].sort((a, b) => since(b) - since(a)).map(lateRow), { searchKeys: lateCols.filter((x) => !x.num && !x.fmt).map((x) => x.key), sortKey: "days", sortDir: -1, filename: "nbfc_waiting_for_rfd.csv" }))));
 }

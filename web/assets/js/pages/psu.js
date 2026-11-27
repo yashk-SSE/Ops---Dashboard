@@ -12,7 +12,7 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, matcher, monthBounds, monthLabel, fmtDay } from "../data.js";
 import { fmtInt, tatSummary } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, tierTable, openList, stageMatrix, daySpanOf, daySpanSwitch, chartClusters } from "../layout.js";
+import { momTables, block, tierTable, openList, stageMatrix, daySpanOf, daySpanSwitch, chartClusters, peopleBoard } from "../layout.js";
 import { comboChart } from "../charts.js";
 import { psuList } from "../lists.js";
 
@@ -169,6 +169,9 @@ export function render(main, { data, state, setState, ctx }) {
   const pOk = (v) => (rs3, r) => (portalOk(r) ? v(rs3, r) : null);
   const stepMetric = (k, id) => ({ id, label: `${f.steps[k]}: time in step P50`, src: "s", kind: "days", good: "down", hint: "EMI log, from Jun 2026", value: pOk((rs3, r) => tatSummary(inStep(k)(rs3, r)).p50), base: (rs3, r) => inStep(k)(rs3, r).length });
   const metrics = [
+  // D-126: live backlog for the people table (month on month leaves 'now' metrics out)
+    { id: "wrfd", label: "Waiting for RFD (now)", src: "s", kind: "now", good: "down", value: (rs) => rs.filter((x) => okState(st(x)) && x[c.hoto_day] != null && x[c.rfd_day] == null && x[c.installed_day] == null && x[c.d70_day] == null).length },
+    { id: "w30", label: "Waiting for the 30% (now)", src: "s", kind: "now", good: "down", value: (rs) => rs.filter((x) => (okState(st(x)) || st(x) === "completed") && portal(x) && x[c.installed_day] != null && x[c.d70_day] != null && x[c.d30_day] == null).length },
     { id: "hotos", label: "PSU HOTOs", src: "s", kind: "count", good: "up", value: (rs3, r) => hotos(rs3, r).length, pick: hotos },
     { id: "share", label: "PSU share of all HOTOs", src: "p", kind: "pct", good: "up", hint: "PSU lane ÷ all HOTOs (HOTO → Installation data)",
       value: (rs3, r) => { const h = rs3.filter((x) => inR(x[p1c.hoto_day], r)); return h.length ? (100 * h.filter(psuOf).length) / h.length : null; }, base: (rs3, r) => rs3.filter((x) => inR(x[p1c.hoto_day], r)).length },
@@ -182,13 +185,16 @@ export function render(main, { data, state, setState, ctx }) {
     { id: "i2t", label: "Installed → 30% received P50", src: "s", kind: "days", good: "down", value: (rs3, r) => tatSummary(i2t(rs3, r)).p50, base: (rs3, r) => i2t(rs3, r).length },
     stepMetric(2, "js"), stepMetric(4, "visit"), stepMetric(5, "insp"), stepMetric(6, "final"),
   ];
-  main.append(block(5, "Month on month", "Month to date and full months · HOTOs by HOTO date, milestones and TATs by the date the step finished · PSU steps from Jun 2026",
-    momTables(metrics, ctx, { s: { file: f, ci: c, rows, list }, p: { file: p1f, ci: { ...p1c, lane: undefined }, rows: p1rows } }, { state, setState })));  // the share row stays all lanes: no lane switch on it
+  const pSrc = { s: { file: f, ci: c, rows, list }, p: { file: p1f, ci: { ...p1c, lane: undefined }, rows: p1rows } };
+  main.append(block(5, "People: COM / SOH / ZOH / AD / AVP", `${ctx.curText} · ${ctx.curRange} · pick a level and a metric: leaderboard / laggerboard on that metric (counts on the change vs the same days last month, rates and TATs on their value; people with little volume left out), every metric in the table below · AD / AVP once the mapping is shared`,
+    peopleBoard(metrics, ctx, pSrc, { state, setState, page: "psu" })));  // D-126
+  main.append(block(6, "Month on month", "Month to date and full months · HOTOs by HOTO date, milestones and TATs by the date the step finished · PSU steps from Jun 2026",
+    momTables(metrics, ctx, pSrc, { state, setState })));  // the share row stays all lanes: no lane switch on it
 
   // ---------------- 6 · waiting list
   const which = ["rfd", "d70", "d30", "old"].includes(state.psuList) ? state.psuList : "rfd";
   const listRows = which === "rfd" ? wRFD : which === "d70" ? w70 : which === "d30" ? w30 : w30old;
-  main.append(block(6, "Waiting: project list", `${fmtInt(listRows.length)} projects · live · longest since HOTO first`,
+  main.append(block(7, "Waiting: project list", `${fmtInt(listRows.length)} projects · live · longest since HOTO first`,
     el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["rfd", `For RFD (${fmtInt(wRFD.length)})`], ["d70", `For the 70% (${fmtInt(w70.length)})`], ["d30", `For the 30% (${fmtInt(w30.length)})`], ["old", `30%, no portal record (${fmtInt(w30old.length)})`]], which, (v) => setState({ psuList: v }), "List")]),
     box(projectList(lateCols, [...listRows].sort((a, b) => since(b) - since(a)).map(lateRow), { searchKeys: lateCols.filter((x) => !x.num && !x.fmt).map((x) => x.key), sortKey: "days", sortDir: -1, filename: `psu_waiting_${which}.csv` }))));
 }

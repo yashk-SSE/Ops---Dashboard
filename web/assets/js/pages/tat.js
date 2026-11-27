@@ -8,7 +8,7 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, monthBounds, monthLabel, monthsBetween } from "../data.js";
 import { fmtInt, pct, tatSummary, percentile } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, tierTable, openList, chartClusters } from "../layout.js";
+import { momTables, block, tierTable, openList, chartClusters, peopleBoard } from "../layout.js";
 import { lineChart } from "../charts.js";
 
 const AGE = [[0, 1, "0–1 d"], [2, 4, "2–4 d"], [5, 7, "5–7 d"], [8, 15, "8–15 d"], [16, 30, "16–30 d"], [31, null, "30+ d"]];
@@ -136,7 +136,7 @@ export function render(main, { data, state, setState, ctx }) {
 
   // ---------------- 6 · open project-stages list (shown below the month on month)
   const all = STAGES.flatMap((s) => s.items.map(listRow(s)));
-  const listBlock = block(6, "Open projects by stage: list", `${fmtInt(all.length)} project-stages · a project waiting for design, permit and payment shows once per stage`,
+  const listBlock = block(7, "Open projects by stage: list", `${fmtInt(all.length)} project-stages · a project waiting for design, permit and payment shows once per stage`,
     box(projectList(listCols, all, { searchKeys: ["sseid", "cluster", "cell", "stage", "com", "late"], sortKey: "days", sortDir: -1, filename: "tat_sla_open.csv" })));
   main.append(listBlock);  // the month on month goes in above it (D-123)
 
@@ -148,6 +148,9 @@ export function render(main, { data, state, setState, ctx }) {
     metrics.push({ id: `${s.id}75`, label: `${s.name} P75`, src: s.src, kind: "days", good: "down", value: q("p75"), base: (rs, r) => s.done(rs, r).length });
     metrics.push({ id: `${s.id}90`, label: `${s.name} P90`, src: s.src, kind: "days", good: "down", value: q("p90"), base: (rs, r) => s.done(rs, r).length });
   }
-  main.insertBefore(block(5, "Month on month", "Stage TAT P50 / P75 / P90 by month of completion · month to date and full months",
-    momTables(metrics, ctx, { p1: { file: f1, ci: c1, rows: p1r }, p2: { file: f2, ci: c2, rows: p2r } }, { state, setState })), listBlock);
+  const pSrc = { p1: { file: f1, ci: c1, rows: p1r }, p2: { file: f2, ci: c2, rows: p2r } };
+  main.insertBefore(block(5, "People: COM / SOH / ZOH / AD / AVP", `${ctx.curText} · ${ctx.curRange} · pick a level and a metric: leaderboard / laggerboard on that metric (counts on the change vs the same days last month, rates and TATs on their value; people with little volume left out), every metric in the table below · AD / AVP once the mapping is shared`,
+    peopleBoard(metrics, ctx, pSrc, { state, setState, page: "tat" })), listBlock);  // D-126
+  main.insertBefore(block(6, "Month on month", "Stage TAT P50 / P75 / P90 by month of completion · month to date and full months",
+    momTables(metrics, ctx, pSrc, { state, setState })), listBlock);
 }

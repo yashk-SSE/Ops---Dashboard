@@ -5,6 +5,7 @@
 //  2. Actual vs target: month / week / day toggle
 //  3. Cluster split: lane, payment, permits (counts and shares, no colouring)
 //  4. 10-day view
+//  6. People (D-126): HOTOs by COM / SOH / ZOH (AD / AVP placeholders)
 //  5. HOTO cohorts (D-125): last 3 full HOTO months, installed in M0 / M1 / M2+ or not yet; all clusters, then by cluster for one month
 // The cluster x stage view lives on HOTO -> Installation only (D-117).
 // The old page (welcome-call mismatch, hidden by D-101) is kept in docs/archive/hotos_v2.js.
@@ -12,7 +13,7 @@ import { el, dataTable, segmented } from "../ui.js";
 import { label, monthKey, monthBounds, monthLabel, monthsBetween, fmtDay, shiftMonth, activeFilterDims } from "../data.js";
 import { fmtInt } from "../stats.js";
 import * as M from "../metrics.js";
-import { block, openList, tierTable, daySpanOf, daySpanSwitch, chartClusters } from "../layout.js";
+import { block, openList, tierTable, daySpanOf, daySpanSwitch, chartClusters, peopleBoard } from "../layout.js";
 import { comboChart } from "../charts.js";
 import { p1FactList } from "../lists.js";
 
@@ -220,4 +221,21 @@ export function render(main, { data, state, setState, ctx }) {
     box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [
       segmented(cohortKeys.map((k) => [k, monthLabel(k)]), pick, (v) => setState({ hotoCohort: v }), "Cohort month")]),
       dataTable(coCols("Cluster"), clRows, { sortKey: "n", sortDir: -1, maxHeight: 520, footer: clTot })])));
+
+  // ---------------- 6 · people (D-126): HOTOs by COM / SOH / ZOH. The MOP is set per cluster, so it has no per-person value here.
+  const hIn = (rs, r) => rs.filter((x) => inR(x[c.hoto_day], r));
+  const shareOf = (test) => (rs, r) => { const h = hIn(rs, r); return h.length ? (100 * h.filter(test).length) / h.length : null; };
+  const hBase = (rs, r) => hIn(rs, r).length;
+  const dayOfMonth = (d) => new Date(Date.UTC(2020, 0, 1) + d * 86400000).getUTCDate();
+  const payIs = (name) => (x) => label(f, "payment_lane", x[c.payment_lane]) === name;
+  const pMetrics = [
+    { id: "hotos", label: "HOTOs", src: "h", kind: "count", good: "up", value: (rs, r) => hIn(rs, r).length },
+    { id: "late", label: "HOTOs after the 20th", src: "h", kind: "pct", good: "down", hint: "Share of the month's HOTOs on day 21 or later: these rarely install in the same month", value: shareOf((x) => dayOfMonth(x[c.hoto_day]) > 20), base: hBase },
+    { id: "permit", label: "With a permit change (LC / NC / PC)", src: "h", kind: "pct", good: "down", value: shareOf((x) => c.permits != null && !["None", "—", ""].includes(label(f, "permits", x[c.permits]))), base: hBase },
+    { id: "nbfc", label: "NBFC share", src: "h", kind: "pct", good: "up", rank: false, value: shareOf(payIs("NBFC")), base: hBase },
+    { id: "psu", label: "PSU share", src: "h", kind: "pct", good: "up", rank: false, value: shareOf(payIs("PSU")), base: hBase },
+    { id: "direct", label: "Direct share", src: "h", kind: "pct", good: "up", rank: false, value: shareOf(payIs("DIRECT")), base: hBase },
+  ];
+  main.append(block(6, "People: COM / SOH / ZOH / AD / AVP", `${ctx.curText} · ${ctx.curRange} · pick a level and a metric: leaderboard / laggerboard on that metric (HOTOs on the change vs the same days last month, shares on their value; people with little volume left out) · lane shares in the table only · MOP is per cluster, so not here · AD / AVP once the mapping is shared`,
+    peopleBoard(pMetrics, ctx, { h: { file: f, ci: c, rows } }, { state, setState, page: "hotos" })));
 }

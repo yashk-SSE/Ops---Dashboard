@@ -9,7 +9,7 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, monthKey, monthBounds, monthLabel, monthsBetween, activeFilterDims } from "../data.js";
 import { fmtInt } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, tierTable, openList, daySpanOf, daySpanSwitch, chartClusters } from "../layout.js";
+import { momTables, block, tierTable, openList, daySpanOf, daySpanSwitch, chartClusters, peopleBoard } from "../layout.js";
 import { lineChart, comboChart } from "../charts.js";
 import { p2FactList } from "../lists.js";
 import { pushModel, openClusterPanel, countBtn } from "../push.js";
@@ -164,7 +164,7 @@ export function render(main, { data, state, setState, ctx }) {
       dataTable([{ key: "name", label: "Cluster" }, { key: "n", label: "Installs", num: true, fmt: fmtInt }, ...cats.map(([k, name]) => ({ key: `c_${k}`, label: name, num: true, fmt: sCell(k, name) }))], sRows, { sortKey: "n", sortDir: -1, maxHeight: 520, footer: sTot })])));
 
   // ---------------- 5 · project list (shown below the month on month)
-  const listBlock = block(5, "Installs in the period", `${fmtInt(curAll.length)} installs · ${ctx.curRange}`,
+  const listBlock = block(6, "Installs in the period", `${fmtInt(curAll.length)} installs · ${ctx.curRange}`,
     box(projectList(list.cols, curAll.map(list.row), { searchKeys: list.cols.filter((x) => !x.num).map((x) => x.key), sortKey: "installed", sortDir: -1, filename: `installs_${ctx.key}.csv`, noun: "installs" })));
   main.append(listBlock);  // the month on month goes in above it (D-123)
 
@@ -175,6 +175,9 @@ export function render(main, { data, state, setState, ctx }) {
     { id: "m1", label: "Installs · M1 (HOTO last month)", src: "f", kind: "count", good: "up", value: (rs, r) => byAge(1)(rs, r).length, pick: byAge(1), share: (rs, r) => { const t = installed(rs, r).length; return t ? (100 * byAge(1)(rs, r).length) / t : null; }, shareTip: "Share of that month's installations" },
     { id: "m2", label: "Installs · M2+ (older HOTOs)", src: "f", kind: "count", good: "up", value: (rs, r) => byAge(2)(rs, r).length, pick: byAge(2), share: (rs, r) => { const t = installed(rs, r).length; return t ? (100 * byAge(2)(rs, r).length) / t : null; }, shareTip: "Share of that month's installations" },
   ];
-  main.insertBefore(block(4, "Month on month", `${planSet.size ? "Plan clusters · " : ""}installations by HOTO age · month to date and full months, last 6 months`,
-    momTables(metrics, ctx, { f: { file: f, ci: c, rows: scoped, list } }, { state, setState })), listBlock);
+  const pSrc = { f: { file: f, ci: c, rows: scoped, list } };
+  main.insertBefore(block(4, "People: COM / SOH / ZOH / AD / AVP", `${ctx.curText} · ${ctx.curRange} · pick a level and a metric: leaderboard / laggerboard on that metric (counts on the change vs the same days last month, rates and TATs on their value; people with little volume left out), every metric in the table below · AD / AVP once the mapping is shared`,
+    peopleBoard(metrics, ctx, pSrc, { state, setState, page: "inst" })), listBlock);  // D-126
+  main.insertBefore(block(5, "Month on month", `${planSet.size ? "Plan clusters · " : ""}installations by HOTO age · month to date and full months, last 6 months`,
+    momTables(metrics, ctx, pSrc, { state, setState })), listBlock);
 }

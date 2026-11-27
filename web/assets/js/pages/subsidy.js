@@ -10,7 +10,7 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, bucketOf, matcher, monthBounds, monthLabel, monthsBetween } from "../data.js";
 import { fmtInt, tatSummary } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, tierTable, openList, stageMatrix, chartClusters } from "../layout.js";
+import { momTables, block, tierTable, openList, stageMatrix, chartClusters, peopleBoard } from "../layout.js";
 import { comboChart } from "../charts.js";
 import { subsidyList } from "../lists.js";
 
@@ -102,7 +102,7 @@ export function render(main, { data, state, setState, ctx }) {
   // ---------------- 6 · list (backlog, or the old no-status projects; shown below the month on month)
   const which = state.subList === "old" ? "old" : "back";
   const listRows = which === "back" ? back : oldNo;
-  const listBlock = block(6, which === "back" ? "Backlog: project list" : "No status, commissioned before Oct 2026", which === "back" ? `${fmtInt(back.length)} projects · longest in stage first` : `${fmtInt(oldNo.length)} projects · not in the backlog (the tracker leaves them out) · never got a subsidy status (D-90)`,
+  const listBlock = block(7, which === "back" ? "Backlog: project list" : "No status, commissioned before Oct 2026", which === "back" ? `${fmtInt(back.length)} projects · longest in stage first` : `${fmtInt(oldNo.length)} projects · not in the backlog (the tracker leaves them out) · never got a subsidy status (D-90)`,
     el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["back", `Backlog (${fmtInt(back.length)})`], ["old", `No status, before Oct (${fmtInt(oldNo.length)})`]], which, (v) => setState({ subList: v }), "List")]),
     box(projectList(list.cols, [...listRows].sort((a, b) => (inStage(b) ?? -1) - (inStage(a) ?? -1)).map(list.row), { searchKeys: list.cols.filter((x) => !x.num).map((x) => x.key), sortKey: "days", sortDir: -1, filename: which === "back" ? "subsidy_backlog.csv" : "subsidy_no_status_old.csv" })));
   main.append(listBlock);  // the month on month goes in above it (D-123)
@@ -117,6 +117,9 @@ export function render(main, { data, state, setState, ctx }) {
     { id: "backlog", label: "Subsidy backlog (now)", src: "s", kind: "now", good: "down", value: (rs) => rs.filter((x) => x[c.in_backlog]).length },
     { id: "vsp", label: "Vendor selection pending (now)", src: "s", kind: "now", good: "down", value: stageCount(VSP) },
   ];
-  main.insertBefore(block(5, "Month on month", "Disbursals by the month OMS recorded them (from Oct 2026; earlier months bulk-loaded) · commissioned by month of commissioning",
-    momTables(metrics, ctx, { s: { file: f, ci: c, rows, list } }, { state, setState })), listBlock);
+  const pSrc = { s: { file: f, ci: c, rows, list } };
+  main.insertBefore(block(5, "People: COM / SOH / ZOH / AD / AVP", `${ctx.curText} · ${ctx.curRange} · pick a level and a metric: leaderboard / laggerboard on that metric (counts on the change vs the same days last month, rates and TATs on their value; people with little volume left out), every metric in the table below · AD / AVP once the mapping is shared`,
+    peopleBoard(metrics, ctx, pSrc, { state, setState, page: "sub" })), listBlock);  // D-126
+  main.insertBefore(block(6, "Month on month", "Disbursals by the month OMS recorded them (from Oct 2026; earlier months bulk-loaded) · commissioned by month of commissioning",
+    momTables(metrics, ctx, pSrc, { state, setState })), listBlock);
 }

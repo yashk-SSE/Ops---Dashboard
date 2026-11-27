@@ -9,7 +9,7 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, monthBounds, monthLabel, monthsBetween } from "../data.js";
 import { tatSummary, fmtInt } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, tierTable, openList, stageMatrix, daySpanOf, daySpanSwitch, chartClusters } from "../layout.js";
+import { momTables, block, tierTable, openList, stageMatrix, daySpanOf, daySpanSwitch, chartClusters, peopleBoard } from "../layout.js";
 import { comboChart } from "../charts.js";
 import { p2FactList, p2PendingList } from "../lists.js";
 
@@ -110,18 +110,23 @@ export function render(main, { data, state, setState, ctx }) {
       order: SUB_ORDER, late: (x) => limit != null && x[pci.aging_days] > limit, onCell: (xs, title) => openPend(title, xs), lateWord: `past ${R}` }))));
 
   // ---------------- 6 · pending list (shown below the month on month)
-  const listBlock = block(6, "Pending commissioning: project list", `${fmtInt(pend.length)} projects · live · longest wait first${state.hideCancelled ? " · active only" : ""}`,
+  const listBlock = block(7, "Pending commissioning: project list", `${fmtInt(pend.length)} projects · live · longest wait first${state.hideCancelled ? " · active only" : ""}`,
     box(projectList(pendList.cols, [...pend].sort((a, b) => b[pci.aging_days] - a[pci.aging_days]).map(pendList.row), { searchKeys: pendList.cols.filter((x) => !x.num).map((x) => x.key), sortKey: "days", sortDir: -1, filename: "pending_commissioning.csv" })));
   main.append(listBlock);  // the month on month goes in above it (D-123)
 
   // ---------------- 5 · month on month (inserted above the list, D-123)
   const tat = (key) => (rs, r) => tatSummary(closed(rs, r))[key], nClosed = (rs, r) => closed(rs, r).length;
   const metrics = [
+  // D-126: live backlog for the people table (month on month leaves 'now' metrics out)
+    { id: "pend", label: "Pending commissioning (now)", src: "pp", kind: "now", good: "down", value: (rs) => rs.length },
     { id: "comm", label: "Commissioned", src: "f", kind: "count", good: "up", value: (rs, r) => rs.filter((x) => inR(x[ci.commissioned_day], r)).length, pick: (rs, r) => rs.filter((x) => inR(x[ci.commissioned_day], r)) },
     { id: "inst", label: "Installed (039B)", src: "f", kind: "count", good: "up", value: (rs, r) => rs.filter((x) => inR(x[ci.installed_day], r)).length, pick: (rs, r) => rs.filter((x) => inR(x[ci.installed_day], r)) },
     { id: "p50", label: "Install → commissioning P50", src: "f", kind: "days", good: "down", value: tat("p50"), base: nClosed },
     { id: "p75", label: "Install → commissioning P75", src: "f", kind: "days", good: "down", value: tat("p75"), base: nClosed },
     { id: "p90", label: "Install → commissioning P90", src: "f", kind: "days", good: "down", value: tat("p90"), base: nClosed },
   ];
-  main.insertBefore(block(5, "Month on month", "Month to date and full months, last 6 months", momTables(metrics, ctx, { f: { file: f, ci, rows, list: factList } }, { state, setState })), listBlock);
+  const pSrc = { pp: { file: f, ci: pci, rows: pend }, f: { file: f, ci, rows, list: factList } };
+  main.insertBefore(block(5, "People: COM / SOH / ZOH / AD / AVP", `${ctx.curText} · ${ctx.curRange} · pick a level and a metric: leaderboard / laggerboard on that metric (counts on the change vs the same days last month, rates and TATs on their value; people with little volume left out), every metric in the table below · AD / AVP once the mapping is shared`,
+    peopleBoard(metrics, ctx, pSrc, { state, setState, page: "p2" })), listBlock);  // D-126
+  main.insertBefore(block(6, "Month on month", "Month to date and full months, last 6 months", momTables(metrics, ctx, pSrc, { state, setState })), listBlock);
 }

@@ -8,7 +8,7 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, bucketOf, matcher, monthBounds, monthLabel, monthsBetween } from "../data.js";
 import { fmtInt, pct, tatSummary } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, tierTable, openList, daySpanOf, daySpanSwitch, chartClusters } from "../layout.js";
+import { momTables, block, tierTable, openList, daySpanOf, daySpanSwitch, chartClusters, peopleBoard } from "../layout.js";
 import { comboChart } from "../charts.js";
 import { escTicketList } from "../lists.js";
 
@@ -109,17 +109,22 @@ export function render(main, { data, state, setState, ctx }) {
     box(dataTable([{ key: "name", label: "Level" }, { key: "n", label: "Open", num: true, fmt: fmtInt }, ...bl.map((b) => ({ key: `b_${b}`, label: b, num: true, fmt: aCell(b) }))], aRows, { maxHeight: 380, footer: aTot }))));
 
   // ---------------- 6 · open ticket list (shown below the month on month)
-  const listBlock = block(6, "Open tickets: list", `${fmtInt(open.length)} tickets · oldest first · ticket id and SSE ID only (no customer names or subjects)`,
+  const listBlock = block(7, "Open tickets: list", `${fmtInt(open.length)} tickets · oldest first · ticket id and SSE ID only (no customer names or subjects)`,
     box(projectList(list.cols, [...open].sort((a, b) => a[c.created_day] - b[c.created_day]).map(list.row), { searchKeys: list.cols.filter((x) => !x.num).map((x) => x.key), sortKey: "created", sortDir: 1, filename: "open_escalations.csv", noun: "tickets" })));
   main.append(listBlock);  // the month on month goes in above it (D-123)
 
   // ---------------- 5 · month on month (inserted above the list, D-123)
   const metrics = [
+  // D-126: live backlog for the people table (month on month leaves 'now' metrics out)
+    { id: "open", label: "Open tickets (now)", src: "e", kind: "now", good: "down", value: (rs2) => rs2.filter((x) => x[c.is_open]).length },
     { id: "raised", label: "Tickets raised", src: "e", kind: "count", good: "down", value: (rs2, r) => created(rs2, r).length, pick: created },
     { id: "trueEsc", label: "True escalations (L2–L5 + Red Alert)", src: "e", kind: "count", good: "down", minBase: 3, value: (rs2, r) => created(rs2, r).filter((x) => x[c.true_esc]).length },
     { id: "l3plus", label: "L3–L5 (Founders, Social, Forum)", src: "e", kind: "count", good: "down", minBase: 3, value: (rs2, r) => created(rs2, r).filter((x) => L3PLUS.has(lvl(x))).length },
     { id: "tat50", label: "Closure TAT P50", src: "e", kind: "days", good: "down", value: (rs2, r) => tatSummary(closedTat(rs2, r)).p50, base: (rs2, r) => closedTat(rs2, r).length },
     { id: "tat90", label: "Closure TAT P90", src: "e", kind: "days", good: "down", value: (rs2, r) => tatSummary(closedTat(rs2, r)).p90, base: (rs2, r) => closedTat(rs2, r).length },
   ];
-  main.insertBefore(block(5, "Month on month", "Tickets by month of creation · TAT by month of closing · month to date and full months", momTables(metrics, ctx, { e: { file: f, ci: c, rows, list } }, { state, setState })), listBlock);
+  const pSrc = { e: { file: f, ci: c, rows, list } };
+  main.insertBefore(block(5, "People: COM / SOH / ZOH / AD / AVP", `${ctx.curText} · ${ctx.curRange} · pick a level and a metric: leaderboard / laggerboard on that metric (counts on the change vs the same days last month, rates and TATs on their value; people with little volume left out), every metric in the table below · AD / AVP once the mapping is shared`,
+    peopleBoard(metrics, ctx, pSrc, { state, setState, page: "esc" })), listBlock);  // D-126
+  main.insertBefore(block(6, "Month on month", "Tickets by month of creation · TAT by month of closing · month to date and full months", momTables(metrics, ctx, pSrc, { state, setState })), listBlock);
 }

@@ -11,7 +11,7 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, matcher, monthBounds, monthLabel, fmtDay } from "../data.js";
 import { fmtInt, tatSummary } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, tierTable, openList, stageMatrix, daySpanOf, daySpanSwitch, chartClusters } from "../layout.js";
+import { momTables, block, tierTable, openList, stageMatrix, daySpanOf, daySpanSwitch, chartClusters, peopleBoard } from "../layout.js";
 import { comboChart } from "../charts.js";
 import { orderList } from "../lists.js";
 
@@ -155,6 +155,8 @@ export function render(main, { data, state, setState, ctx }) {
 
   // ---------------- 6 · month on month (above the list)
   const metrics = [
+  // D-126: live backlog for the people table (month on month leaves 'now' metrics out)
+    { id: "wait", label: "Waiting for HOTO (now)", src: "o", kind: "now", good: "down", value: (rs) => rs.filter((x) => status(x) === "Waiting" && !old(x)).length },
     { id: "orders", label: "Orders", src: "o", kind: "count", good: "up", value: (rs, r) => orders(rs, r).length, pick: orders },
     { id: "oa", label: "Opening Act share of orders", src: "o", kind: "pct", good: "up", value: (rs, r) => { const o = orders(rs, r); return o.length ? (100 * o.filter((x) => x[c.oa] === 1).length) / o.length : null; }, base: (rs, r) => orders(rs, r).length },
     { id: "handed", label: "Handed over (HOTO)", src: "o", kind: "count", good: "up", value: (rs, r) => handed(rs, r).length, pick: handed },
@@ -169,10 +171,13 @@ export function render(main, { data, state, setState, ctx }) {
   ];
   // ---------------- 7 · waiting list (the month on month goes in above it)
   const which = state.orderList === "stale" ? "stale" : "wait", listRows = which === "stale" ? stale : waiting;
-  const listBlock = block(7, which === "stale" ? `Open after ${OLD}+ days: order list` : "Waiting for HOTO: order list", `${fmtInt(listRows.length)} orders · live · oldest order first · SSE ID once the project exists`,
+  const listBlock = block(8, which === "stale" ? `Open after ${OLD}+ days: order list` : "Waiting for HOTO: order list", `${fmtInt(listRows.length)} orders · live · oldest order first · SSE ID once the project exists`,
     el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["wait", `Waiting (${fmtInt(waiting.length)})`], ["stale", `Over ${OLD} days (${fmtInt(stale.length)})`]], which, (v) => setState({ orderList: v }), "List")]),
     box(projectList(lateCols, [...listRows].sort((a, b) => a[c.order_day] - b[c.order_day]).map(lateRow), { searchKeys: lateCols.filter((x) => !x.num && !x.fmt).map((x) => x.key), sortKey: "days", sortDir: -1, filename: which === "stale" ? "orders_open_over_90_days.csv" : "orders_waiting_for_hoto.csv", noun: "orders" })));
   main.append(listBlock);
-  main.insertBefore(block(6, "Month on month", "Month to date and full months · orders by order date, HOTOs and TATs by the date the step finished · welcome calls from Jun 2026",
-    momTables(metrics, ctx, { o: { file: f, ci: c, rows, list } }, { state, setState })), listBlock);
+  const pSrc = { o: { file: f, ci: c, rows, list } };
+  main.insertBefore(block(6, "People: COM / SOH / ZOH / AD / AVP", `${ctx.curText} · ${ctx.curRange} · pick a level and a metric: leaderboard / laggerboard on that metric (counts on the change vs the same days last month, rates and TATs on their value; people with little volume left out), every metric in the table below · AD / AVP once the mapping is shared`,
+    peopleBoard(metrics, ctx, pSrc, { state, setState, page: "order" })), listBlock);  // D-126
+  main.insertBefore(block(7, "Month on month", "Month to date and full months · orders by order date, HOTOs and TATs by the date the step finished · welcome calls from Jun 2026",
+    momTables(metrics, ctx, pSrc, { state, setState })), listBlock);
 }

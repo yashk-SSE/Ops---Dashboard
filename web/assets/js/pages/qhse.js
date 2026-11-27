@@ -8,7 +8,7 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, bucketOf, matcher, monthBounds, monthLabel, monthsBetween } from "../data.js";
 import { fmtInt, pct, tatSummary } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, tierTable, openList, daySpanOf, daySpanSwitch, chartClusters } from "../layout.js";
+import { momTables, block, tierTable, openList, daySpanOf, daySpanSwitch, chartClusters, peopleBoard } from "../layout.js";
 import { comboChart } from "../charts.js";
 import { qhseSiteList } from "../lists.js";
 
@@ -141,7 +141,7 @@ export function render(main, { data, state, setState, ctx }) {
       { key: "code", label: "PP code" }, { key: "component", label: "Component" }, { key: "issue", label: "Issue" }, { key: "audited", label: "Audited", fmt: fmtDay, csv: fmtDay }, { key: "days", label: "Days open", num: true }, { key: "ic", label: "IC" }, { key: "vendor", label: "Vendor" }],
       ppRows, { searchKeys: ["sseid", "cluster", "cell", "code", "ic", "vendor"], sortKey: "days", sortDir: -1, filename: "qhse_open_punch_points.csv", noun: "punch points" })
     : projectList(repCols(which === "ic" ? "IC" : "Vendor"), which === "ic" ? icRep : venRep, { searchKeys: ["name", "cluster", "sites"], sortKey: "zt", sortDir: -1, filename: which === "ic" ? "qhse_repeat_ics.csv" : "qhse_repeat_vendors.csv", noun: which === "ic" ? "ICs" : "vendors" });
-  const listBlock = block(6, "Lists", "Open Z+H sites, open punch points, and ICs / vendors with 2+ ZT sites in the same cluster in the last 30 days (warning / training)",
+  const listBlock = block(7, "Lists", "Open Z+H sites, open punch points, and ICs / vendors with 2+ ZT sites in the same cluster in the last 30 days (warning / training)",
     el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["sites", `Open Z+H sites (${fmtInt(openAll.length)})`], ["pps", `Open punch points (${fmtInt(ppRows.length)})`], ["ic", `Repeat ICs (${icRep.length})`], ["ven", `Repeat vendors (${venRep.length})`]], which, (v) => setState({ qhseList: v }), "List")]),
     box(listNode));
   main.append(listBlock);  // the month on month goes in above it (D-123)
@@ -149,6 +149,8 @@ export function render(main, { data, state, setState, ctx }) {
   // ---------------- 5 · month on month (inserted above the lists, D-123)
   const share = (col) => (rs, r) => { const b = baseRows(rs, r); return b.length ? pct(b.filter((x) => x[col]).length, b.length) : null; };
   const metrics = [
+  // D-126: live backlog for the people table (month on month leaves 'now' metrics out)
+    { id: "openzh", label: "Open Z+H sites (now)", src: "q", kind: "now", good: "down", value: (rs) => rs.filter(openZH).length },
     { id: "audited", label: "Sites audited", src: "q", kind: "count", good: "up", value: (rs, r) => audited(rs, r).length, pick: audited },
     { id: "zt", label: "% sites with ZT", src: "q", kind: "pct", good: "down", value: share(colZT), base: (rs, r) => baseRows(rs, r).length },
     { id: "zh", label: "% sites with ZT + High", src: "q", kind: "pct", good: "down", value: share(colZH), base: (rs, r) => baseRows(rs, r).length },
@@ -156,5 +158,8 @@ export function render(main, { data, state, setState, ctx }) {
     { id: "close50", label: "Closure TAT P50", src: "q", kind: "days", good: "down", minBase: 15, value: (rs, r) => tatSummary(rectified(rs, r)).p50, base: (rs, r) => rectified(rs, r).length },
     { id: "close90", label: "Closure TAT P90", src: "q", kind: "days", good: "down", minBase: 15, value: (rs, r) => tatSummary(rectified(rs, r)).p90, base: (rs, r) => rectified(rs, r).length },
   ];
-  main.insertBefore(block(5, "Month on month", "Month to date and full months, last 6 months", momTables(metrics, ctx, { q: { file: f, ci: c, rows, list } }, { state, setState })), listBlock);
+  const pSrc = { q: { file: f, ci: c, rows, list } };
+  main.insertBefore(block(5, "People: COM / SOH / ZOH / AD / AVP", `${ctx.curText} · ${ctx.curRange} · pick a level and a metric: leaderboard / laggerboard on that metric (counts on the change vs the same days last month, rates and TATs on their value; people with little volume left out), every metric in the table below · AD / AVP once the mapping is shared`,
+    peopleBoard(metrics, ctx, pSrc, { state, setState, page: "qhse" })), listBlock);  // D-126
+  main.insertBefore(block(6, "Month on month", "Month to date and full months, last 6 months", momTables(metrics, ctx, pSrc, { state, setState })), listBlock);
 }

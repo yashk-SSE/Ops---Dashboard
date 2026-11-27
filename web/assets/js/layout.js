@@ -437,11 +437,11 @@ function boardList(rows, m, tone) {
   return box;
 }
 
-export function rankings(metrics, ctx, sources, { level, metricId, onLevel, onMetric, page }) {
+export function rankings(metrics, ctx, sources, { level, metricId, onLevel, onMetric, page, levels = LEVELS }) {
   const rankable = metrics.filter((m) => m.rank !== false);
-  const m = rankable.find((x) => x.id === metricId) || rankable[0];
-  const dim = LEVELS.some(([k]) => k === level) ? level : "cluster";
-  const dimLabel = LEVELS.find(([k]) => k === dim)[1];
+  const m = rankable.find((x) => x.id === metricId) || rankable.find((x) => x.kind !== "now") || rankable[0];  // default: the page's first period metric
+  const dim = levels.some(([k]) => k === level) ? level : levels[0][0];
+  const dimLabel = levels.find(([k]) => k === dim)[1];
   const scored = scoreGroups(m, ctx, sources, dim);
   const better = m.good === "up" ? (a, b) => b.score - a.score : (a, b) => a.score - b.score;
   const sorted = [...scored].sort(better);
@@ -452,7 +452,7 @@ export function rankings(metrics, ctx, sources, { level, metricId, onLevel, onMe
   const sel = el("select", { class: "mini-select", "aria-label": "Metric to rank" }, rankable.map((x) => el("option", { value: x.id, text: x.label, selected: x.id === m.id })));
   sel.addEventListener("change", () => onMetric(sel.value));
   const controls = el("div", { class: "rank-controls" }, [
-    segmented(LEVELS, dim, onLevel, "Rank by level"), el("span", { class: "rank-label", text: "Metric" }), sel,
+    segmented(levels, dim, onLevel, "Rank by level"), el("span", { class: "rank-label", text: "Metric" }), sel,
     el("span", { class: "count", text: `Ranked on ${how} · ${scored.length} ${dimLabel}s with enough volume` }),
   ]);
   // live counts (backlogs) have no "leaders": the best are simply the ones with nothing open, so show the biggest backlogs only
@@ -463,7 +463,8 @@ export function rankings(metrics, ctx, sources, { level, metricId, onLevel, onMe
       el("div", { class: "card board good" }, [el("div", { class: "board-head", text: `Leaderboard · top 5 ${dimLabel}` }), boardList(leaders, m, "good")]),
       el("div", { class: "card board bad" }, [el("div", { class: "board-head", text: `Laggerboard · bottom 5 ${dimLabel}` }), boardList(laggers, m, "bad")]),
     ]);
-  return el("div", {}, [controls, boards, rankTable(rankable, ctx, sources, dim, dimLabel, page)]);
+  // the table shows every metric, also ones kept out of the ranking dropdown (rank: false, e.g. lane shares with no good / bad side)
+  return el("div", {}, [controls, boards, rankTable(metrics.filter((x) => x.table !== false && x.kind !== "now" || (x.kind === "now" && x.rank !== false)), ctx, sources, dim, dimLabel, page)]);
 }
 
 function rankTable(metrics, ctx, sources, dim, dimLabel, page) {
@@ -492,6 +493,29 @@ function rankTable(metrics, ctx, sources, dim, dimLabel, page) {
   const exportBtn = el("button", { class: "small-btn", type: "button", text: "Export CSV", onclick: () => downloadCSV(`${page}_${dim}_${ctx.key}.csv`, cols, rows) });
   return card(`All ${dimLabel}s`, `${ctx.curText} · Δ vs ${ctx.live ? "same days last month" : ctx.prevLabel} · click a header to sort`,
     dataTable(cols, rows, { sortKey: `v_${first.id}`, sortDir: -1, maxHeight: 420 }), [el("span", { class: "count", text: `${rows.length} rows` }), exportBtn]);
+}
+
+// ---------------------------------------------------------------- people table (D-126)
+/** Levels of the people table on every module page. AD / D and AVP have no source in the data yet (OQ-05, D-51): they keep their
+ *  place in the switch and show a note until the mapping arrives. */
+export const PEOPLE_LEVELS = [["com", "COM"], ["soh", "SOH"], ["zoh", "ZOH"], ["ad", "AD / D"], ["avp", "AVP"]];
+const PEOPLE_PENDING = { ad: "AD / D", avp: "AVP" };
+/**
+ * Leaderboard + laggerboard + full table of the page's metrics by COM / SOH / ZOH (D-126; the V2 rankings, D-81). Ranks on the
+ * metric picked in the dropdown (counts on the change vs the same days last month, rates and TATs on their value; people with too
+ * little volume left out). Level and metric are shared state: `peopleLevel`, `rank[page]`.
+ */
+export function peopleBoard(metrics, ctx, sources, { state, setState, page }) {
+  const lv = PEOPLE_LEVELS.some(([k]) => k === state.peopleLevel) ? state.peopleLevel : "com";
+  const onLevel = (v) => setState({ peopleLevel: v });
+  if (PEOPLE_PENDING[lv]) {
+    return el("div", {}, [
+      el("div", { class: "rank-controls" }, [segmented(PEOPLE_LEVELS, lv, onLevel, "Rank by level")]),
+      el("div", { class: "card count", text: `${PEOPLE_PENDING[lv]}: the mapping isn't in the data yet. This view fills in once the ${PEOPLE_PENDING[lv]} list (by cluster or cell) is shared and added to the Config sheet.` }),
+    ]);
+  }
+  return rankings(metrics, ctx, sources, { level: lv, levels: PEOPLE_LEVELS, metricId: (state.rank || {})[page], page,
+    onLevel, onMetric: (v) => setState({ rank: { ...(state.rank || {}), [page]: v } }) });
 }
 
 // ---------------------------------------------------------------- 5. details

@@ -9,7 +9,7 @@
 // Metric: { id, label, src, kind: 'count'|'pct'|'days'|'now', good: 'up'|'down',
 //           value(rows, range) -> number|null, base?(rows, range) -> sample size, minBase?, kpi?, mom?, rank?, foot? }
 // Sources: { [src]: { file, ci, rows } }  (rows already filtered by the global filters)
-import { el, card, segmented, metricCard, dataTable, downloadCSV, projectList } from "./ui.js";
+import { el, card, segmented, metricCard, dataTable, downloadCSV, projectList, caps, facetMenu } from "./ui.js";
 import { monthKey, monthLabel, monthBounds, shiftMonth, fmtDay, label, isExpansion, matcher } from "./data.js";
 import { delta } from "./metrics.js";
 import { fmtInt, fmtPct } from "./stats.js";
@@ -251,8 +251,11 @@ export function momTables(metrics, ctx, sourcesIn, opts = {}) {
     const v = val(m, s, range);
     const n = v != null && m.base && (m.kind === "pct" || m.kind === "days") ? m.base(s.rows, range) : null;
     const low = n != null && n < (m.minBase ?? 20);
-    return el("td", { class: `${cls}${low ? " low-n" : ""}`, text: fmtKind(m.kind, v),
-      "data-tip": low ? `Based on only ${fmtInt(n)} project${n === 1 ? "" : "s"}: too few to read much into` : null });
+    // D-125: a row may carry a share (m.share -> %), shown small next to the value, e.g. "612 · 45%"
+    const sh = v != null && m.share ? m.share(s.rows, range) : null;
+    return el("td", { class: `${cls}${low ? " low-n" : ""}`,
+      "data-tip": low ? `Based on only ${fmtInt(n)} project${n === 1 ? "" : "s"}: too few to read much into` : sh != null && m.shareTip ? m.shareTip : null },
+    [fmtKind(m.kind, v), sh != null ? el("small", { class: "mom-share", text: ` · ${Math.round(sh)}%` }) : null]);
   };
   const out = [];
   if (withLane && lanes.length > 1) {
@@ -502,7 +505,7 @@ export function details(title, sub, ...children) {
 // ---------------------------------------------------------------- page skeleton
 export function block(n, title, sub, ...children) {
   return el("section", { class: "section" }, [
-    el("div", { class: "section-head" }, [el("h2", {}, [el("span", { class: "step", text: String(n) }), title]), sub ? el("span", { class: "sub", text: sub }) : null]),
+    el("div", { class: "section-head" }, [el("h2", {}, [el("span", { class: "step", text: String(n) }), ...(typeof title === "string" ? caps(title) : [title])]), sub ? el("span", { class: "sub", text: sub }) : null]),
     ...children,
   ]);
 }
@@ -528,10 +531,11 @@ export function stageMatrix({ items, stageOf, groupOf, late, order = [], onCell,
     const n = xs.length, l = xs.filter(late).length;
     if (!n) return el("td", { class: `sm zero${extra}`, text: "·" });
     const title = colName ? `${rowName} · ${colName}` : rowName;
+    // D-125: late first (the number to act on), then "of <all in the cell> · share late"
     return el("td", { class: `sm ${tint(n, l)}${extra}`, tabindex: "0", role: "button",
-      "data-tip": `${title}\n${fmtInt(n)} ${what} · ${fmtInt(l)} ${lateWord} (${pctTxt(n, l)})\nClick for the list`,
+      "data-tip": `${title}\n${fmtInt(l)} ${lateWord} of ${fmtInt(n)} ${what} (${pctTxt(n, l)})\nClick for the list`,
       onclick: () => onCell(xs, title), onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onCell(xs, title); } } },
-    [fmtInt(n), l ? el("span", { class: "sm-late", text: `${fmtInt(l)} late` }) : null]);
+    [el("span", { class: l ? "sm-l" : "sm-l none", text: fmtInt(l) }), el("span", { class: "sm-late", text: `of ${fmtInt(n)} · ${pctTxt(n, l)}` })]);
   };
   // column groups (D-110): e.g. Pre-RTI / RTI / Post-RTI, each collapsible to one total column (collapsed by default)
   const gdefs = colGroups ? colGroups.map((g) => ({ ...g, stages: g.stages.filter((s) => count.has(s)) })) : null;
@@ -560,21 +564,23 @@ export function stageMatrix({ items, stageOf, groupOf, late, order = [], onCell,
           el("button", { type: "button", class: "grp-toggle", "aria-expanded": String(openSet.has(g.name)), onclick: () => { if (openSet.has(g.name)) openSet.delete(g.name); else openSet.add(g.name); draw(); } },
             [el("span", { class: "grp-caret", text: openSet.has(g.name) ? "▾" : "▸" }), `${g.name} · ${fmtInt(n)}`])]));
       }
-      r1.push(el("th", { class: "num", rowspan: "2", text: "Total" }), el("th", { class: "num", rowspan: "2", text: lateWord.replace(/^past/, "Past") }));
+      r1.push(el("th", { class: "num", rowspan: "2", text: "All stages" }));
       head.push(el("tr", {}, r1), el("tr", {}, cols.map((c) => el("th", { class: `num${c.first ? " grp-first" : ""}`, text: c.label, "data-tip": c.tip }))));
     } else {
       head.push(el("tr", {}, [el("th", { class: "sticky", text: corner }), ...cols.map((c) => el("th", { class: "num", text: c.label, "data-tip": c.tip })),
-        el("th", { class: "num", text: "Total" }), el("th", { class: "num", text: lateWord.replace(/^past/, "Past") })]));
+        el("th", { class: "num", text: "All stages" })]));
     }
+    // D-125: fixed column widths (names 190px, every other column 96px; extra room spread evenly)
+    table.append(el("colgroup", {}, [el("col", { style: { width: "190px" } }), ...cols.map(() => el("col", { style: { width: "96px" } })), el("col", { style: { width: "96px" } })]));
     table.append(el("thead", {}, head));
     const tb = el("tbody");
     const colTitle = (c) => (c.total ? c.group : c.tip);
     for (const r of rowsG) {
       tb.append(el("tr", {}, [el("td", { class: "sticky", text: r.g }), ...cols.map((c) => cellTd(r.xs.filter((x) => c.match(stageOf(x))), r.g, colTitle(c), c.first && gdefs ? " grp-first" : "")),
-        cellTd(r.xs, `${r.g} · all stages`), el("td", { class: "num", text: r.late ? `${fmtInt(r.late)} (${pctTxt(r.xs.length, r.late)})` : "0" })]));
+        cellTd(r.xs, `${r.g} · all stages`)]));
     }
     tb.append(el("tr", { class: "total-row" }, [el("td", { class: "sticky", text: "All" }), ...cols.map((c) => cellTd(items.filter((x) => c.match(stageOf(x))), "All", colTitle(c), c.first && gdefs ? " grp-first" : "")),
-      cellTd(items, "All · all stages"), el("td", { class: "num", text: `${fmtInt(allLate)} (${pctTxt(items.length, allLate)})` })]));
+      cellTd(items, "All · all stages")]));
     table.append(tb);
     holder.replaceChildren(table);
   };
@@ -585,7 +591,7 @@ export function stageMatrix({ items, stageOf, groupOf, late, order = [], onCell,
     el("span", {}, [el("i", { style: { background: "var(--bad-soft)" } }), "20–40%"]),
     el("span", {}, [el("i", { style: { background: "color-mix(in srgb, var(--bad) 28%, var(--surface))" } }), "40–60%"]),
     el("span", {}, [el("i", { style: { background: "color-mix(in srgb, var(--bad) 48%, var(--surface))" } }), "60% or more"]),
-    el("span", { text: `· all: ${pctTxt(items.length, allLate)} late · cells under 5 projects not shaded · ${gdefs ? "click a group heading to show its stages · " : ""}click any number for its list` }),
+    el("span", { text: `· big number = ${lateWord}, below it = all ${what} in the cell and the share late · all: ${fmtInt(allLate)} of ${fmtInt(items.length)} (${pctTxt(items.length, allLate)}) · cells under 5 not shaded · ${gdefs ? "click a group heading to show its stages · " : ""}click any cell for its list` }),
   ]);
   return el("div", {}, [legend, holder]);
 }
@@ -597,6 +603,35 @@ export const daySpanOf = (state) => (DAY_SPANS.includes(Number(state.daySpan)) ?
 /** The 30 / 60 / 90 days switch shown next to a trend's grain switch while the Day view is on. */
 export function daySpanSwitch(state, setState) {
   return segmented(DAY_SPANS.map((n) => [String(n), `${n} days`]), String(daySpanOf(state)), (v) => setState({ daySpan: Number(v) }), "Days shown");
+}
+
+// ---------------------------------------------------------------- cluster picker on a graph (D-125)
+let chartCloser = false;
+/**
+ * A "Clusters" tick list above one graph: it narrows that graph only, inside the top-bar filters, and is remembered per graph
+ * (state.chartClusters[key]). `names` = the clusters the graph's rows hold. The choice applies when the list closes, so several
+ * clusters can be ticked in one go. Returns { node, keep(clusterName), note } where note describes the choice for the subtitle.
+ */
+export function chartClusters(state, setState, key, names) {
+  const counts = new Map();
+  for (const n of names) if (n && n !== "—" && n !== "Not mapped" && n !== "Unknown") counts.set(n, (counts.get(n) || 0) + 1);
+  const saved = ((state.chartClusters || {})[key] || []).filter((c) => counts.has(c));
+  const sel = new Set(saved);
+  let dirty = false;
+  const node = facetMenu("Clusters", () => [...counts].sort((a, b) => a[0].localeCompare(b[0])), sel, () => { dirty = true; });
+  node.classList.add("chart-cl");
+  node.addEventListener("toggle", () => {
+    if (node.open || !dirty) return;
+    dirty = false;
+    setState({ chartClusters: { ...(state.chartClusters || {}), [key]: [...sel] } });
+  });
+  if (!chartCloser) {  // a click outside an open list closes it (and so applies the choice)
+    chartCloser = true;
+    document.addEventListener("click", (e) => document.querySelectorAll("details.facet.chart-cl[open]").forEach((d) => { if (!d.contains(e.target)) d.open = false; }));
+  }
+  const keep = (name) => !sel.size || sel.has(name);
+  const note = !sel.size ? "" : sel.size === 1 ? ` · graph: ${[...sel][0]} only` : ` · graph: ${sel.size} clusters`;
+  return { node, keep, note };
 }
 
 // ---------------------------------------------------------------- cluster table with a tier switch (D-116)

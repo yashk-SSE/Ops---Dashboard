@@ -5,13 +5,14 @@
 //  2. Actual vs target: month / week / day toggle
 //  3. Cluster split: lane, payment, permits (counts and shares, no colouring)
 //  4. 10-day view
+//  5. HOTO cohorts (D-125): last 3 full HOTO months, installed in M0 / M1 / M2+ or not yet; all clusters, then by cluster for one month
 // The cluster x stage view lives on HOTO -> Installation only (D-117).
 // The old page (welcome-call mismatch, hidden by D-101) is kept in docs/archive/hotos_v2.js.
 import { el, dataTable, segmented } from "../ui.js";
 import { label, monthKey, monthBounds, monthLabel, monthsBetween, fmtDay, shiftMonth, activeFilterDims } from "../data.js";
 import { fmtInt } from "../stats.js";
 import * as M from "../metrics.js";
-import { block, openList, tierTable, daySpanOf, daySpanSwitch } from "../layout.js";
+import { block, openList, tierTable, daySpanOf, daySpanSwitch, chartClusters } from "../layout.js";
 import { comboChart } from "../charts.js";
 import { p1FactList } from "../lists.js";
 
@@ -97,13 +98,16 @@ export function render(main, { data, state, setState, ctx }) {
   // ---------------- 2 · actual vs target: month / week / day
   const grain = ["mom", "wow", "dod"].includes(state.hotoGrain) ? state.hotoGrain : "dod";
   const planClusters = planMonth && !otherFilters.length ? new Set(Object.keys(planMonth.clusters).filter((k) => clusters.includes(k))) : null;
-  const scope = planClusters && planClusters.size ? (x) => planClusters.has(cl(x)) : () => true;
+  // D-125: the graph's own cluster picker narrows its bars and its MOP line (plan clusters stay the base when there is a plan)
+  const cp = chartClusters(state, setState, "hotos", rows.map(cl));
+  const gPlan = planClusters ? new Set([...planClusters].filter(cp.keep)) : null;
+  const scope = gPlan && gPlan.size ? (x) => gPlan.has(cl(x)) : (x) => cp.keep(cl(x));
   const scoped = rows.filter(scope);
   const dayTarget = (d) => {  // MOP ÷ days in that month, plan clusters, months that have a MOP
     const k = monthKey(d), pm = (data.plan.months || {})[k];
-    if (!pm || !planClusters) return null;
+    if (!pm || !gPlan) return null;
     const [a, b] = monthBounds(k), n = b - a + 1;
-    return [...planClusters].reduce((s, name) => s + ((pm.clusters[name] || {}).hoto_mop || 0), 0) / n;
+    return [...gPlan].reduce((s, name) => s + ((pm.clusters[name] || {}).hoto_mop || 0), 0) / n;
   };
   const byDay = new Map(); for (const x of scoped) { const d = x[c.hoto_day]; if (d != null) byDay.set(d, (byDay.get(d) || 0) + 1); }
   let labels = [], act = [], tgt = [];
@@ -124,9 +128,9 @@ export function render(main, { data, state, setState, ctx }) {
     }
   }
   const tgtSum = tgt.filter((v) => v != null).length;
-  main.append(block(2, "Actual vs target", `${planClusters && planClusters.size ? `${planClusters.size} plan clusters` : "All clusters"} · bars = HOTOs, dashed line = MOP (${grain === "dod" ? "per day" : grain === "wow" ? "per week" : "per month, to date for this month"}) · AOP line once the sheet is shared`,
+  main.append(block(2, "Actual vs target", `${gPlan && gPlan.size ? `${gPlan.size} plan clusters` : "All clusters"}${cp.note} · bars = HOTOs, dashed line = MOP (${grain === "dod" ? "per day" : grain === "wow" ? "per week" : "per month, to date for this month"}) · AOP line once the sheet is shared`,
     box([
-      el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"]], grain, (v) => setState({ hotoGrain: v }), "Grain"), grain === "dod" ? daySpanSwitch(state, setState) : null]),
+      el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"]], grain, (v) => setState({ hotoGrain: v }), "Grain"), grain === "dod" ? daySpanSwitch(state, setState) : null, cp.node]),
       comboChart(labels, { label: "HOTOs", data: act, color: "--series-1" }, tgtSum ? { label: "MOP target", data: tgt, color: "--series-2" } : null, { yFormat: (v) => fmtInt(v), height: 290 }),
       tgtSum ? null : el("div", { class: "count", text: "No MOP for these periods yet (the Install Plan sheet is loaded month by month)." }),
     ])));
@@ -136,19 +140,21 @@ export function render(main, { data, state, setState, ctx }) {
   const catsOf = {
     lane: { cats: (data.meta.lanes || []).slice(), of: (x) => [label(f, "lane", x[c.lane])] },
     payment: { cats: ["DIRECT", "NBFC", "PSU"], of: (x) => [label(f, "payment_lane", x[c.payment_lane])] },
-    permits: { cats: ["None", "LC", "NC", "PC"], of: (x) => { const p = c.permits != null ? label(f, "permits", x[c.permits]) : "None"; return p === "None" || !p ? ["None"] : p.split("+"); } },
+    // D-125: one column per combination, so every HOTO sits in exactly one column and the columns add up to the total
+    permits: { cats: ["None", "LC", "NC", "PC", "LC+NC", "LC+PC", "NC+PC", "LC+NC+PC"], of: (x) => { const p = c.permits != null ? label(f, "permits", x[c.permits]) : "None"; return [!p || p === "—" ? "None" : p]; } },
   }[split];
-  const catNames = { DIRECT: "Direct", NBFC: "NBFC", PSU: "PSU", None: "No permit change", LC: "Load change (LC)", NC: "Name change (NC)", PC: "Phase change (PC)" };
+  const catNames = { DIRECT: "Direct", NBFC: "NBFC", PSU: "PSU", None: "No permit change", LC: "LC only", NC: "NC only", PC: "PC only",
+    "LC+NC": "LC + NC", "LC+PC": "LC + PC", "NC+PC": "NC + PC", "LC+NC+PC": "LC + NC + PC" };
   const splitRow = (name, xs) => { const r = { name, n: xs.length, xs, by: {} }; for (const k of catsOf.cats) r.by[k] = xs.filter((x) => catsOf.of(x).includes(k)); return r; };
   const splitRows = clusters.map((name) => splitRow(name, cur.filter((x) => cl(x) === name))).filter((r) => r.n);
   const splitTot = splitRow("All clusters", cur); splitTot.footer = true;
   const splitCell = (k) => (v, r) => { const xs = r.by[k], p = r.n ? (100 * xs.length) / r.n : null; if (!xs.length) return el("span", { class: "count", text: "·" });
     return el("span", { class: "split-cell" }, [r.footer ? fmtInt(xs.length) : el("button", { type: "button", class: "link-btn", text: fmtInt(xs.length), onclick: (e) => { e.stopPropagation(); openRows(`${r.name} · ${catNames[k] || k}`, xs); } }), el("small", { text: pctTxt(p) })]); };
   const splitCols = [{ key: "name", label: "Cluster" }, { key: "n", label: "HOTOs", num: true, fmt: fmtInt },
-    ...catsOf.cats.map((k) => ({ key: `c_${k}`, label: catNames[k] || k, num: true, fmt: splitCell(k) }))];
+    ...catsOf.cats.filter((k) => split !== "permits" || splitTot.by[k].length).map((k) => ({ key: `c_${k}`, label: catNames[k] || k, num: true, fmt: splitCell(k) }))];  // empty combinations hidden
   splitRows.forEach((r) => catsOf.cats.forEach((k) => { r[`c_${k}`] = r.by[k].length; }));
   catsOf.cats.forEach((k) => { splitTot[`c_${k}`] = splitTot.by[k].length; });
-  main.append(block(3, "Cluster split", `${ctx.curText} · ${ctx.curRange} · count and share of the cluster's HOTOs${split === "permits" ? " · a project with several permit changes counts in each" : ""}`,
+  main.append(block(3, "Cluster split", `${ctx.curText} · ${ctx.curRange} · count and share of the cluster's HOTOs${split === "permits" ? " · LC = load change, NC = name change, PC = phase change · each HOTO in one column, so they add up" : ""}`,
     box([
       el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["lane", "Lane"], ["payment", "Payment"], ["permits", "Permits"]], split, (v) => setState({ hotoSplit: v }), "Split")]),
       dataTable(splitCols, splitRows, { sortKey: "n", sortDir: -1, maxHeight: 560, footer: splitTot }),
@@ -173,4 +179,45 @@ export function render(main, { data, state, setState, ctx }) {
       { key: "b2", label: "Days 21–end", num: true, fmt: bCell(2) }, { key: "total", label: "Month", num: true, fmt: fmtInt },
       { key: "mop", label: "MOP (plan clusters)", num: true, fmt: (v) => (v == null ? "–" : fmtInt(v)) }],
     tenRows.map((r) => ({ ...r, b0: r.b[0].length, b1: r.b[1].length, b2: r.b[2].length })).reverse(), { maxHeight: 420 }))));
+
+  // ---------------- 5 · HOTO cohorts (D-125): each of the last 3 full HOTO months, and in which month its HOTOs got installed
+  const instId = (f.stages.find((s) => s.id === "F07") || f.stages.at(-1)).id;
+  const instDay = (x) => { const d = x[c[instId]]; return d != null && d >= 0 ? x[c.hoto_day] + d : null; };
+  const mIdx = (k) => { const [y, m] = k.split("-").map(Number); return y * 12 + m; };
+  const cohortKeys = [shiftMonth(ctx.key, -3), shiftMonth(ctx.key, -2), shiftMonth(ctx.key, -1)];
+  const cohortOf = (xs, k, name) => {
+    const [a, b] = monthBounds(k), hs = xs.filter((x) => x[c.hoto_day] >= a && x[c.hoto_day] <= b);
+    const r = { name, k, n: hs.length, m0: [], m1: [], m2: [], no: [] };
+    for (const x of hs) {
+      const i = instDay(x);
+      if (i == null || i > last) { r.no.push(x); continue; }
+      const gap = mIdx(monthKey(i)) - mIdx(k);
+      (gap <= 0 ? r.m0 : gap === 1 ? r.m1 : r.m2).push(x);
+    }
+    for (const kk of ["m0", "m1", "m2", "no"]) r[`n_${kk}`] = r[kk].length;
+    return r;
+  };
+  const open = (k, gap) => monthBounds(shiftMonth(k, gap))[0] > last;  // that month hasn't started yet
+  const BUCKET = { m0: "M0 (same month)", m1: "M1 (next month)", m2: "M2+ (later)", no: "Not installed yet" };
+  const coCell = (kk) => (v, r) => {
+    const xs = r[kk], gap = { m0: 0, m1: 1, m2: 2 }[kk];
+    if (gap != null && open(r.k, gap)) return el("span", { class: "count", text: "–", "data-tip": "That month hasn't started yet" });
+    return el("span", { class: "split-cell" }, [r.footer || !xs.length ? fmtInt(xs.length) : el("button", { type: "button", class: "link-btn", text: fmtInt(xs.length),
+      onclick: (e) => { e.stopPropagation(); openRows(`${r.name} · HOTOs of ${monthLabel(r.k)} · ${BUCKET[kk]}`, xs); } }), el("small", { text: pctTxt(r.n ? (100 * xs.length) / r.n : null) })]);
+  };
+  const coCols = (first) => [{ key: "name", label: first }, { key: "n", label: "HOTOs", num: true, fmt: fmtInt },
+    { key: "n_m0", label: BUCKET.m0, num: true, tip: "Installed in the same month as the HOTO", fmt: coCell("m0") },
+    { key: "n_m1", label: BUCKET.m1, num: true, tip: "Installed in the month after the HOTO", fmt: coCell("m1") },
+    { key: "n_m2", label: BUCKET.m2, num: true, tip: "Installed two or more months after the HOTO (so far)", fmt: coCell("m2") },
+    { key: "n_no", label: BUCKET.no, num: true, tip: "Not installed by the last complete day (includes later-cancelled projects unless they are hidden)", fmt: coCell("no") }];
+  const monthRows = cohortKeys.map((k) => cohortOf(rows, k, monthLabel(k)));
+  const pick = cohortKeys.includes(state.hotoCohort) ? state.hotoCohort : cohortKeys[2];
+  const coClusters = [...new Set(rows.filter((x) => { const [a, b] = monthBounds(pick); return x[c.hoto_day] >= a && x[c.hoto_day] <= b; }).map(cl))].filter((k) => !SKIP.has(k));
+  const clRows = coClusters.map((name) => cohortOf(rows.filter((x) => cl(x) === name), pick, name)).filter((r) => r.n);
+  const clTot = { ...cohortOf(rows, pick, "All clusters"), footer: true };
+  main.append(block(5, "HOTO cohorts: when they got installed", `HOTOs of the last 3 full months · share of each month's HOTOs installed in the same month (M0), the next (M1) or later (M2+), up to ${fmtDay(last)} · click a count for its HOTOs`,
+    box(dataTable(coCols("HOTO month"), monthRows, { maxHeight: 260 })),
+    box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [
+      segmented(cohortKeys.map((k) => [k, monthLabel(k)]), pick, (v) => setState({ hotoCohort: v }), "Cohort month")]),
+      dataTable(coCols("Cluster"), clRows, { sortKey: "n", sortDir: -1, maxHeight: 520, footer: clTot })])));
 }

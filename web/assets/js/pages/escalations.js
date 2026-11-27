@@ -8,7 +8,7 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, bucketOf, matcher, monthBounds, monthLabel, monthsBetween } from "../data.js";
 import { fmtInt, pct, tatSummary } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, tierTable, openList, daySpanOf, daySpanSwitch } from "../layout.js";
+import { momTables, block, tierTable, openList, daySpanOf, daySpanSwitch, chartClusters } from "../layout.js";
 import { comboChart } from "../charts.js";
 import { escTicketList } from "../lists.js";
 
@@ -68,16 +68,19 @@ export function render(main, { data, state, setState, ctx }) {
     tierTable({ rows: cRows, cols, totalOf, sumParts, tier: state.tier, onTier: (v) => setState({ tier: v }), sortKey: "nO", sortDir: -1 })));
 
   // ---------------- 2 · trend: raised vs closed
+  // D-125: the graph's own cluster picker (this graph only, inside the top-bar filters)
+  const cp = chartClusters(state, setState, "esc", rows.map(cl));
+  const gRows = rows.filter((x) => cp.keep(cl(x)));
   const grain = ["mom", "wow", "dod"].includes(state.escGrain) ? state.escGrain : "wow";
   const rDay = new Map(), cDay = new Map();
-  for (const x of rows) { if (x[c.created_day] != null) rDay.set(x[c.created_day], (rDay.get(x[c.created_day]) || 0) + 1); if (x[c.closed_day] != null) cDay.set(x[c.closed_day], (cDay.get(x[c.closed_day]) || 0) + 1); }
+  for (const x of gRows) { if (x[c.created_day] != null) rDay.set(x[c.created_day], (rDay.get(x[c.created_day]) || 0) + 1); if (x[c.closed_day] != null) cDay.set(x[c.closed_day], (cDay.get(x[c.closed_day]) || 0) + 1); }
   const labels = [], rs = [], cs = [];
   const addRange = (lbl, a, b) => { let n = 0, m = 0; for (let d = a; d <= b; d++) { n += rDay.get(d) || 0; m += cDay.get(d) || 0; } labels.push(lbl); rs.push(n); cs.push(m); };
   if (grain === "dod") for (let d = last - (daySpanOf(state) - 1); d <= last; d++) addRange(fmtDay(d).slice(0, 6), d, d);
   else if (grain === "wow") for (let w = 11; w >= 0; w--) { const b = last - 7 * w, a = b - 6; addRange(`${fmtDay(a).slice(0, 6)}–${fmtDay(b).slice(0, 6)}`, a, b); }
   else for (const k of monthsBetween(data.meta.windows.YTD[0], last)) { const [a, b] = monthBounds(k); addRange(monthLabel(k) + (b > last ? " (MTD)" : ""), a, Math.min(b, last)); }
-  main.append(block(2, "Raised vs closed over time", "Bars = tickets raised, dashed line = tickets closed · when the line sits below the bars, the open pile grows",
-    box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"]], grain, (v) => setState({ escGrain: v }), "Grain"), grain === "dod" ? daySpanSwitch(state, setState) : null]),
+  main.append(block(2, "Raised vs closed over time", "Bars = tickets raised, dashed line = tickets closed · when the line sits below the bars, the open pile grows" + cp.note,
+    box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"]], grain, (v) => setState({ escGrain: v }), "Grain"), grain === "dod" ? daySpanSwitch(state, setState) : null, cp.node]),
       comboChart(labels, { label: "Raised", data: rs, color: "--series-1" }, { label: "Closed", data: cs, color: "--series-2" }, { yFormat: (v) => fmtInt(v), height: 290 })])));
 
   // ---------------- 3 · split: level or issue type (tickets created this month)

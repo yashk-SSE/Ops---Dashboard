@@ -1,6 +1,16 @@
 // DOM helpers and dashboard components. All data text goes in via textContent (labels are untrusted data).
 import { icon } from "./icons.js";
 
+/** D-125: headings and table headers are shown in capitals; keep the lowercase plural "s" of an acronym (RMs, HOTOs, ICs, TATs)
+ *  so it doesn't read "RMS". Returns text and <span class="lc"> pieces for el(). */
+export function caps(text) {
+  const out = [], s = String(text ?? ""), re = /\b([A-Z][A-Z0-9]+)s\b/g;
+  let at = 0, m;
+  while ((m = re.exec(s))) { out.push(s.slice(at, m.index + m[1].length), el("span", { class: "lc", text: "s" })); at = m.index + m[0].length; }
+  out.push(s.slice(at));
+  return out.filter((x) => x !== "");
+}
+
 export function el(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
@@ -102,9 +112,9 @@ export function dataTable(columns, rows, opts = {}) {
   const limit = opts.limit || 500;
   function render() {
     thead.replaceChildren(el("tr", {}, columns.map((c) => el("th", {
-      class: `${c.num ? "num " : ""}sortable`, text: c.label + (state.key === c.key ? (state.dir > 0 ? " ▲" : " ▼") : ""), "data-tip": c.tip || null,
+      class: `${c.num ? "num " : ""}sortable`, "data-tip": c.tip || null,
       onclick: () => { state.dir = state.key === c.key ? -state.dir : (c.num ? -1 : 1); state.key = c.key; render(); },
-    }))));
+    }, [...caps(c.label), state.key === c.key ? (state.dir > 0 ? " ▲" : " ▼") : null]))));
     let data = rows;
     if (state.key) {
       data = [...rows].sort((a, b) => {
@@ -163,7 +173,7 @@ export function downloadCSV(filename, columns, rows) {
 // Options are the values present in the list, counted after the other list filters (so Cluster narrows Cell).
 const LIST_FACETS = ["cluster", "lane", "cell", "late"];  // "late": Late / Not late (D-117)
 let facetCloser = false;
-function facetMenu(labelText, getOptions, sel, onChange) {
+export function facetMenu(labelText, getOptions, sel, onChange) {
   const value = el("span", { class: "facet-val" });
   const det = el("details", { class: "facet" });
   const search = el("input", { type: "search", class: "ms-search", placeholder: `Search ${labelText.toLowerCase()}…`, "aria-label": `Search ${labelText}` });

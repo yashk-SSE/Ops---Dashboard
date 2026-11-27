@@ -8,7 +8,7 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, monthBounds, monthLabel, monthsBetween } from "../data.js";
 import { fmtInt, pct, tatSummary, percentile } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, tierTable, openList } from "../layout.js";
+import { momTables, block, tierTable, openList, chartClusters } from "../layout.js";
 import { lineChart } from "../charts.js";
 
 const AGE = [[0, 1, "0–1 d"], [2, 4, "2–4 d"], [5, 7, "5–7 d"], [8, 15, "8–15 d"], [16, 30, "16–30 d"], [31, null, "30+ d"]];
@@ -105,14 +105,17 @@ export function render(main, { data, state, setState, ctx }) {
     tierTable({ rows: gRows, cols, totalOf, sumParts, tier: state.tier, onTier: (v) => setState({ tier: v }), sortKey: "late", sortDir: -1 })));
 
   // ---------------- 2 · trend: stage P50 by month / week (completed stages, page filters)
+  // D-125: the graph's own cluster picker (this graph only, inside the top-bar filters)
+  const cl1 = (x) => label(f1, "cluster", x[c1.cluster]), cl2 = (x) => label(f2, "cluster", x[c2.cluster]);
+  const cp = chartClusters(state, setState, "tat", p1r.map(cl1));
   const grain = state.tatGrain === "wow" ? "wow" : "mom";
-  const rowsOf = { p1: p1r, p2: p2r };
+  const rowsOf = { p1: p1r.filter((x) => cp.keep(cl1(x))), p2: p2r.filter((x) => cp.keep(cl2(x))) };
   const periods = [];
   if (grain === "wow") for (let w = 11; w >= 0; w--) { const b = last - 7 * w, a = b - 6; periods.push([`${fmtDay(a).slice(0, 6)}–${fmtDay(b).slice(0, 6)}`, [a, b]]); }
   else for (const k of monthsBetween(data.meta.windows.YTD[0], last)) { const [a, b] = monthBounds(k); periods.push([monthLabel(k) + (b > last ? " (MTD)" : ""), [a, Math.min(b, last)]]); }
   const colors = ["--series-1", "--series-2", "--series-3", "--g-now", "--warning"];
-  main.append(block(2, "Stage TAT over time", "P50 days of stages completed in each period (blank when fewer than 20) · lower is better",
-    box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["mom", "Month on month"], ["wow", "Week on week"]], grain, (v) => setState({ tatGrain: v }), "Grain")]),
+  main.append(block(2, "Stage TAT over time", "P50 days of stages completed in each period (blank when fewer than 20) · lower is better" + cp.note,
+    box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["mom", "Month on month"], ["wow", "Week on week"]], grain, (v) => setState({ tatGrain: v }), "Grain"), cp.node]),
       lineChart(periods.map((p) => p[0]), STAGES.map((s, i) => ({ label: s.name, color: colors[i], data: periods.map(([, r]) => { const t = s.done(rowsOf[s.src], r); return t.length >= 20 ? tatSummary(t).p50 : null; }) })), { yFormat: (v) => `${v} d`, height: 300 })])));
 
   // ---------------- 3 · split: stage x lane

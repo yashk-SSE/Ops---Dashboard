@@ -12,7 +12,7 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, matcher, monthBounds, monthLabel, fmtDay } from "../data.js";
 import { fmtInt, tatSummary } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, tierTable, openList, stageMatrix, daySpanOf, daySpanSwitch } from "../layout.js";
+import { momTables, block, tierTable, openList, stageMatrix, daySpanOf, daySpanSwitch, chartClusters } from "../layout.js";
 import { comboChart } from "../charts.js";
 import { psuList } from "../lists.js";
 
@@ -118,20 +118,23 @@ export function render(main, { data, state, setState, ctx }) {
     tierTable({ rows: cRows, cols, totalOf, sumParts, tier: state.tier, onTier: (v) => setState({ tier: v }), sortKey: "nW", sortDir: -1 })));
 
   // ---------------- 2 · trend
+  // D-125: the graph's own cluster picker (this graph only, inside the top-bar filters)
+  const cp = chartClusters(state, setState, "psu", rows.map(cl));
+  const gRows = rows.filter((x) => cp.keep(cl(x)));
   const grain = ["mom", "wow", "dod"].includes(state.psuGrain) ? state.psuGrain : "mom";
   const series = ["rfd", "d70", "d30"].includes(state.psuSeries) ? state.psuSeries : "rfd";
   const sName = { rfd: "RFD", d70: "70% received", d30: "30% received" }[series];
-  const byDay = (field) => { const mp = new Map(); for (const x of rows) { const d = x[c[field]]; if (d != null) mp.set(d, (mp.get(d) || 0) + 1); } return mp; };
+  const byDay = (field) => { const mp = new Map(); for (const x of gRows) { const d = x[c[field]]; if (d != null) mp.set(d, (mp.get(d) || 0) + 1); } return mp; };
   const sDay = byDay(series === "rfd" ? "rfd_day" : series === "d70" ? "d70_day" : "d30_day"), hDay = byDay("hoto_day");
   const labels = [], ss = [], hs = [];
   const add = (lbl, a, b) => { let s1 = 0, h1 = 0; for (let d = a; d <= b; d++) { s1 += sDay.get(d) || 0; h1 += hDay.get(d) || 0; } labels.push(lbl); ss.push(s1); hs.push(h1); };
   if (grain === "dod") for (let d = last - (daySpanOf(state) - 1); d <= last; d++) add(fmtDay(d).slice(0, 6), d, d);
   else if (grain === "wow") for (let w = 11; w >= 0; w--) { const b = last - 7 * w, a = b - 6; add(`${fmtDay(a).slice(0, 6)}–${fmtDay(b).slice(0, 6)}`, a, b); }
   else for (const k of M.trendMonths(data.meta)) { const [a, b] = monthBounds(k); if (a > last) continue; add(monthLabel(k) + (b > last ? " (MTD)" : ""), a, Math.min(b, last)); }
-  main.append(block(2, "RFD and disbursals vs handed over", `Bars = ${sName}, dashed line = PSU HOTOs`,
+  main.append(block(2, "RFD and disbursals vs handed over", `Bars = ${sName}, dashed line = PSU HOTOs${cp.note}`,
     box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start", gap: "10px" } }, [
       segmented([["rfd", "RFD"], ["d70", "70% received"], ["d30", "30% received"]], series, (v) => setState({ psuSeries: v }), "Milestone"),
-      segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"]], grain, (v) => setState({ psuGrain: v }), "Grain"), grain === "dod" ? daySpanSwitch(state, setState) : null]),
+      segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"]], grain, (v) => setState({ psuGrain: v }), "Grain"), grain === "dod" ? daySpanSwitch(state, setState) : null, cp.node]),
       comboChart(labels, { label: sName, data: ss, color: "--series-1" }, { label: "PSU HOTOs", data: hs, color: "--series-2" }, { yFormat: (v) => fmtInt(v), height: 290 })])));
 
   // ---------------- 3 · where they wait: cluster x PSU step

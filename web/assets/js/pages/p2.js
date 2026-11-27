@@ -9,7 +9,7 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, monthBounds, monthLabel, monthsBetween } from "../data.js";
 import { tatSummary, fmtInt } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, tierTable, openList, stageMatrix, daySpanOf, daySpanSwitch } from "../layout.js";
+import { momTables, block, tierTable, openList, stageMatrix, daySpanOf, daySpanSwitch, chartClusters } from "../layout.js";
 import { comboChart } from "../charts.js";
 import { p2FactList, p2PendingList } from "../lists.js";
 
@@ -70,16 +70,19 @@ export function render(main, { data, state, setState, ctx }) {
     tierTable({ rows: cRows, cols, totalOf, sumParts, tier: state.tier, onTier: (v) => setState({ tier: v }), sortKey: "nP", sortDir: -1 })));
 
   // ---------------- 2 · trend: commissioned vs installs
+  // D-125: the graph's own cluster picker (this graph only, inside the top-bar filters)
+  const cp = chartClusters(state, setState, "p2", rows.map(cl));
+  const gRows = rows.filter((x) => cp.keep(cl(x)));
   const grain = ["mom", "wow", "dod"].includes(state.p2Grain) ? state.p2Grain : "wow";
-  const byDay = (field) => { const m = new Map(); for (const x of rows) { const d = x[ci[field]]; if (d != null) m.set(d, (m.get(d) || 0) + 1); } return m; };
+  const byDay = (field) => { const m = new Map(); for (const x of gRows) { const d = x[ci[field]]; if (d != null) m.set(d, (m.get(d) || 0) + 1); } return m; };
   const cDay = byDay("commissioned_day"), iDay = byDay("installed_day");
   const labels = [], cs = [], is = [];
   const addRange = (lbl, a, b) => { let c = 0, i = 0; for (let d = a; d <= b; d++) { c += cDay.get(d) || 0; i += iDay.get(d) || 0; } labels.push(lbl); cs.push(c); is.push(i); };
   if (grain === "dod") for (let d = last - (daySpanOf(state) - 1); d <= last; d++) addRange(fmtDay(d).slice(0, 6), d, d);
   else if (grain === "wow") for (let w = 11; w >= 0; w--) { const b = last - 7 * w, a = b - 6; addRange(`${fmtDay(a).slice(0, 6)}–${fmtDay(b).slice(0, 6)}`, a, b); }
   else for (const k of monthsBetween(data.meta.windows.YTD[0], last)) { const [a, b] = monthBounds(k); addRange(monthLabel(k) + (b > last ? " (MTD)" : ""), a, Math.min(b, last)); }
-  main.append(block(2, "Commissioned vs installed over time", "Bars = commissioned, dashed line = installs (the inflow) · when the bars sit below the line, the backlog grows",
-    box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"]], grain, (v) => setState({ p2Grain: v }), "Grain"), grain === "dod" ? daySpanSwitch(state, setState) : null]),
+  main.append(block(2, "Commissioned vs installed over time", "Bars = commissioned, dashed line = installs (the inflow) · when the bars sit below the line, the backlog grows" + cp.note,
+    box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"]], grain, (v) => setState({ p2Grain: v }), "Grain"), grain === "dod" ? daySpanSwitch(state, setState) : null, cp.node]),
       comboChart(labels, { label: "Commissioned", data: cs, color: "--series-1" }, { label: "Installed", data: is, color: "--series-2" }, { yFormat: (v) => fmtInt(v), height: 290 })])));
 
   // ---------------- 3 · split: delay reason by cluster

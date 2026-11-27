@@ -580,3 +580,25 @@ small.t-good, small.t-warn, small.t-bad { font-weight: 600; }
 .topbar .day-pick { flex-wrap: wrap; justify-content: flex-end; row-gap: 6px; }
 .topbar .chips { max-width: 28vw; }
 @media (max-width: 1200px) { .plan-switch .lbl { display: none; } }
+
+/* ---------------- D-125: uniform tables ----------------
+   Every value column the same width (96px, growing evenly when the table has room), headers wrapped and centred, values centred.
+   The first (name) column stays left-aligned and wider so cluster / RM / reason names read well. Fixed layout means a column
+   never widens for one long value: text wraps inside its cell, numbers stay on one line. Wide tables scroll inside their frame. */
+table.data { table-layout: fixed; }
+table.data th { width: 96px; white-space: normal; text-align: center; vertical-align: middle; line-height: 1.25; }
+table.data thead tr:first-child > th:first-child { width: 190px; text-align: left; }
+table.data td { text-align: center; white-space: normal; overflow-wrap: anywhere; vertical-align: middle; }
+table.data td:first-child { text-align: left; overflow-wrap: break-word; }
+table.data td.num, table.data th.num { text-align: center; white-space: nowrap; }
+table.data td .split-cell { white-space: nowrap; }
+table.mom th, table.mom td { white-space: normal; }
+table.mom td:not(:first-child) { white-space: nowrap; }
+table.mom thead tr:first-child > th:first-child { width: 230px; }
+table.data.stage-matrix td.sm { text-align: center; }
+table.data.stage-matrix thead th.grp-head { width: auto; }
+table.data.stage-matrix td.sm .sm-l { display: block; font-size: 13px; font-weight: 700; }
+table.data.stage-matrix td.sm .sm-l.none { font-weight: 500; color: var(--muted); }
+table.data.stage-matrix td.sm.t3 .sm-l.none { color: #fff; }
+.lc { text-transform: none; }  /* D-125: plural s of an acronym in capitalised headings (RMs, HOTOs) */
+table.mom td .mom-share { color: var(--muted); font-weight: 500; font-size: 11px; }  /* D-125 */

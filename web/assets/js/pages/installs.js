@@ -9,7 +9,7 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, monthKey, monthBounds, monthLabel, monthsBetween, activeFilterDims } from "../data.js";
 import { fmtInt } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, tierTable, openList, daySpanOf, daySpanSwitch } from "../layout.js";
+import { momTables, block, tierTable, openList, daySpanOf, daySpanSwitch, chartClusters } from "../layout.js";
 import { lineChart, comboChart } from "../charts.js";
 import { p2FactList } from "../lists.js";
 import { pushModel, openClusterPanel, countBtn } from "../push.js";
@@ -117,8 +117,10 @@ export function render(main, { data, state, setState, ctx }) {
 
   // ---------------- 2 · trend: installs vs plan (plan clusters)
   const grain = ["dod", "wow", "mom", "cum"].includes(state.instGrain) ? state.instGrain : "dod";
-  const planSet = new Set(planRowsAll.map((r) => r.name));
-  const scoped = planSet.size ? rows.filter((x) => planSet.has(cl(x))) : rows;
+  // D-125: the graph's own cluster picker narrows its bars and plan line
+  const cp = chartClusters(state, setState, "inst", rows.map(cl));
+  const planSet = new Set(planRowsAll.map((r) => r.name).filter(cp.keep));
+  const scoped = planSet.size ? rows.filter((x) => planSet.has(cl(x))) : rows.filter((x) => cp.keep(cl(x)));
   const byDay = new Map(); for (const x of scoped) { const d = x[c.installed_day]; if (d != null) byDay.set(d, (byDay.get(d) || 0) + 1); }
   const dayTarget = (d) => {
     const k = monthKey(d), pm = (data.plan.months || {})[k];
@@ -130,7 +132,7 @@ export function render(main, { data, state, setState, ctx }) {
   if (grain === "cum") {
     const [a] = monthBounds(ctx.key), days = Array.from({ length: ctx.days }, (_, i) => i + 1);
     const act = []; let run = 0; for (const d of days) { if (a + d - 1 > last) { act.push(null); continue; } run += byDay.get(a + d - 1) || 0; act.push(run); }
-    const cumOf = (field, total) => days.map((d) => planRowsAll.reduce((s, r) => { const pc = planMonth.clusters[r.name]; return s + (pc[field] ? pc[field][Math.min(d, pc[field].length) - 1] : (pc[total] * d) / ctx.days); }, 0));
+    const cumOf = (field, total) => days.map((d) => planRowsAll.filter((r) => cp.keep(r.name)).reduce((s, r) => { const pc = planMonth.clusters[r.name]; return s + (pc[field] ? pc[field][Math.min(d, pc[field].length) - 1] : (pc[total] * d) / ctx.days); }, 0));
     chart = usePlan ? lineChart(days.map(String), [{ label: "Actual", data: act, color: "--series-1" },
       { label: `${planWord[0].toUpperCase()}${planWord.slice(1)} plan`, data: cumOf("base_cum", "base_total").map(Math.round), color: "--series-2" },
       { label: ctx.planMode === "aggr" ? "Base plan" : "Aggressive plan", data: cumOf("aggr_cum", "aggr_total").map(Math.round), color: "--series-3" }], { yFormat: (v) => fmtInt(v), height: 290 })
@@ -143,9 +145,9 @@ export function render(main, { data, state, setState, ctx }) {
     const hasT = tgt.some((v) => v != null);
     chart = comboChart(labels, { label: "Installs", data: act, color: "--series-1" }, hasT ? { label: `${planWord[0].toUpperCase()}${planWord.slice(1)} plan`, data: tgt, color: "--series-2" } : null, { yFormat: (v) => fmtInt(v), height: 290 });
   }
-  main.append(block(2, "Installs vs plan over time", `${planSet.size ? `${planSet.size} plan clusters` : "All clusters"} · ${grain === "cum" ? "this month, cumulative" : "bars = installs, dashed = the plan (its daily curve)"} · plan only for months that have one`,
+  main.append(block(2, "Installs vs plan over time", `${planSet.size ? `${planSet.size} plan clusters` : "All clusters"}${cp.note} · ${grain === "cum" ? "this month, cumulative" : "bars = installs, dashed = the plan (its daily curve)"} · plan only for months that have one`,
     box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [
-      segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"], ["cum", "This month, cumulative"]], grain, (v) => setState({ instGrain: v }), "Grain"), grain === "dod" ? daySpanSwitch(state, setState) : null]), chart])));
+      segmented([["mom", "Month on month"], ["wow", "Week on week"], ["dod", "Day on day"], ["cum", "This month, cumulative"]], grain, (v) => setState({ instGrain: v }), "Grain"), grain === "dod" ? daySpanSwitch(state, setState) : null, cp.node]), chart])));
 
   // ---------------- 3 · split: HOTO age or lane (installs this month, every cluster)
   const split = state.instSplit === "lane" ? "lane" : "age";
@@ -169,9 +171,9 @@ export function render(main, { data, state, setState, ctx }) {
   // ---------------- 4 · month on month (inserted above the list, D-123)
   const metrics = [
     { id: "inst", label: "Installations", src: "f", kind: "count", good: "up", value: (rs, r) => installed(rs, r).length, pick: installed, hint: "Installation task 039B done" },
-    { id: "m0", label: "Installs · M0 (HOTO this month)", src: "f", kind: "count", good: "up", value: (rs, r) => byAge(0)(rs, r).length, pick: byAge(0) },
-    { id: "m1", label: "Installs · M1 (HOTO last month)", src: "f", kind: "count", good: "up", value: (rs, r) => byAge(1)(rs, r).length, pick: byAge(1) },
-    { id: "m2", label: "Installs · M2+ (older HOTOs)", src: "f", kind: "count", good: "up", value: (rs, r) => byAge(2)(rs, r).length, pick: byAge(2) },
+    { id: "m0", label: "Installs · M0 (HOTO this month)", src: "f", kind: "count", good: "up", value: (rs, r) => byAge(0)(rs, r).length, pick: byAge(0), share: (rs, r) => { const t = installed(rs, r).length; return t ? (100 * byAge(0)(rs, r).length) / t : null; }, shareTip: "Share of that month's installations" },
+    { id: "m1", label: "Installs · M1 (HOTO last month)", src: "f", kind: "count", good: "up", value: (rs, r) => byAge(1)(rs, r).length, pick: byAge(1), share: (rs, r) => { const t = installed(rs, r).length; return t ? (100 * byAge(1)(rs, r).length) / t : null; }, shareTip: "Share of that month's installations" },
+    { id: "m2", label: "Installs · M2+ (older HOTOs)", src: "f", kind: "count", good: "up", value: (rs, r) => byAge(2)(rs, r).length, pick: byAge(2), share: (rs, r) => { const t = installed(rs, r).length; return t ? (100 * byAge(2)(rs, r).length) / t : null; }, shareTip: "Share of that month's installations" },
   ];
   main.insertBefore(block(4, "Month on month", `${planSet.size ? "Plan clusters · " : ""}installations by HOTO age · month to date and full months, last 6 months`,
     momTables(metrics, ctx, { f: { file: f, ci: c, rows: scoped, list } }, { state, setState })), listBlock);

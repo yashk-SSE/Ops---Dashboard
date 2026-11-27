@@ -1,5 +1,5 @@
 // HOTO -> Installation V3 (D-111): "How fast do HOTOs become installs, and where do they wait?"
-//  1. Cluster table (BAU / Expansion folds): HOTOs MTD, M0 / M1 conversion vs last month, HOTO -> install P50 / P75 / P90,
+//  1. Cluster table (All / BAU / Expansion): HOTOs MTD, installs MTD split by HOTO month (M0 / M1 / M2+, D-125), HOTO -> install P50 / P75 / P90,
 //     not installed, stuck (global stuck rule), over 90 days.
 //  2. Trend: M0 / M1 / M2 conversion by month, or HOTO -> install P50 / P90 by month / week / day.
 //  3. HOTO-day skew (Prasanna's TAT brief): share of HOTOs installed in the same month, by HOTO day of month.
@@ -10,7 +10,7 @@ import { el, dataTable, segmented, projectList } from "../ui.js";
 import { label, fmtDay, monthKey, monthBounds, monthLabel, monthsBetween, shiftMonth } from "../data.js";
 import { fmtInt, percentile } from "../stats.js";
 import * as M from "../metrics.js";
-import { momTables, block, tierTable, openList, stageMatrix, daySpanOf, daySpanSwitch } from "../layout.js";
+import { momTables, block, tierTable, openList, stageMatrix, daySpanOf, daySpanSwitch, chartClusters } from "../layout.js";
 import { lineChart } from "../charts.js";
 import { p1FactList, p2FactList, p1PendingList } from "../lists.js";
 import { pushModel } from "../push.js";
@@ -40,6 +40,17 @@ export function render(main, { data, state, setState, ctx }) {
   const conv = (rs, r, k) => M.mConversion(rs, r, k, (x) => x[ci.hoto_day], instDay);
   const hotoList = p1FactList(f, install.id), pendList = p1PendingList(f);
   const openHotos = (title, xs) => openList({ title, sub: `${fmtInt(xs.length)} HOTOs`, cols: hotoList.cols, rows: xs.map(hotoList.row), filename: `${title.replace(/\W+/g, "_").toLowerCase()}.csv` });
+  // D-125: installs in the month (install -> commissioning facts), split by the HOTO month they came from:
+  // M0 = HOTO this month, M1 = last month, M2+ = two or more months back (or no HOTO date)
+  const AGE = { i0: "from M0 HOTOs", i1: "from M1 HOTOs", i2: "from M2+ HOTOs" };
+  const p2l = p2FactList(p2);
+  const openInst = (title, xs) => openList({ title, sub: `${fmtInt(xs.length)} installs`, cols: p2l.cols, rows: xs.map(p2l.row), noun: "installs", filename: `${title.replace(/\W+/g, "_").toLowerCase()}.csv` });
+  const mI = (d) => { const x = new Date(Date.UTC(2020, 0, 1) + d * 86400000); return x.getUTCFullYear() * 12 + x.getUTCMonth(); };
+  const installsBy = (r2) => {
+    const inst = r2.filter((x) => inR(x[p2.ci.installed_day], ctx.cur)), i0 = [], i1 = [], i2 = [];
+    for (const x of inst) { const h = x[p2.ci.hoto_day], g = h == null ? 99 : mI(x[p2.ci.installed_day]) - mI(h); (g <= 0 ? i0 : g === 1 ? i1 : i2).push(x); }
+    return { inst, nI: inst.length, i0, i1, i2, nM0: i0.length, nM1: i1.length, nM2: i2.length };
+  };
   const lateCols = [...pendList.cols, { key: "late", label: "Late", tip: `Past its stage's limit in days from HOTO (stuck rule: ${R}, top bar)` }];
   const lateRow = (x) => ({ ...pendList.row(x), late: push.isStuck(x) ? `Late (past ${R})` : "Not late" });
   const openPend = (title, xs) => openList({ title, sub: `${fmtInt(xs.length)} projects · live · filter Late to see the late ones`, cols: lateCols, rows: [...xs].sort((a, b) => b[pci.days_since_hoto] - a[pci.days_since_hoto]).map(lateRow), filename: `${title.replace(/\W+/g, "_").toLowerCase()}.csv` });
@@ -52,25 +63,23 @@ export function render(main, { data, state, setState, ctx }) {
   const cRow = (name) => {
     const rs = rows.filter((x) => cl(x) === name), r2 = p2r.filter((x) => cl2(x) === name);
     const hotos = rs.filter((x) => inR(x[ci.hoto_day], ctx.cur));
-    const m0 = conv(rs, ctx.cur, 0), m0lm = conv(rs, ctx.prevSame, 0), m1 = conv(rs, ctx.cur, 1), m1lm = conv(rs, ctx.prevSame, 1);
+    const ins = installsBy(r2);  // D-125: installs this month, split by the HOTO month they came from
     const tat = M.hotoToInstall(data, r2, ctx.cur), pend = push.of(name), stuck = push.stuck(name), old = pend.filter((x) => x[pci.days_since_hoto] > 90);
-    return { name, hotos, nH: hotos.length, m0: m0.pct, m0b: m0.base, m0lm: m0lm.pct, m1: m1.pct, m1lm: m1lm.pct, p50: tat.p50, p75: tat.p75, p90: tat.p90, nTat: tat.count,
+    return { name, hotos, nH: hotos.length, ...ins, p50: tat.p50, p75: tat.p75, p90: tat.p90, nTat: tat.count,
       pend, nP: pend.length, stuck, nS: stuck.length, old, nO: old.length };
   };
   const cRows = clusters.map(cRow);
-  const ptDelta = (cur, prev) => (cur == null || prev == null ? null : cur - prev);
-  const convCell = (key, lmKey) => (v, r) => {
-    if (v == null) return "–";
-    const d = ptDelta(v, r[lmKey]);
-    return el("span", { class: "split-cell", "data-tip": `${r.name}: ${v.toFixed(1)}% · same days last month ${r[lmKey] == null ? "–" : `${r[lmKey].toFixed(1)}%`}` }, [`${v.toFixed(1)}%`,
-      d == null ? null : el("small", { class: d >= 0 ? "t-good" : "t-bad", text: `${d >= 0 ? "+" : ""}${d.toFixed(1)}` })]);
-  };
+  const ageCell = (k) => (v, r) => { const xs = r[k] || [];
+    return el("span", { class: "split-cell" }, [r.footer || !xs.length ? fmtInt(xs.length) : btn(xs.length, () => openInst(`${r.name} · installs ${ctx.curText} · ${AGE[k]}`, xs)),
+      el("small", { text: r.nI ? `${Math.round((100 * xs.length) / r.nI)}%` : "–" })]); };
   const dCell = (v) => (v == null ? "–" : `${Math.round(v)} d`);
   const cols = [
     { key: "name", label: "Cluster" },
     { key: "nH", label: "HOTOs MTD", num: true, fmt: (v, r) => (r.footer ? fmtInt(v) : btn(v, () => openHotos(`${r.name} · HOTOs ${ctx.curText}`, r.hotos))) },
-    { key: "m0", label: "M0 conversion", num: true, tip: "Share of this month's HOTOs installed in the same month (to the same day); small = points vs the same days last month", fmt: convCell("m0", "m0lm") },
-    { key: "m1", label: "M1 conversion", num: true, tip: "Share of last month's HOTOs installed this month (to the same day); small = points vs the same days last month", fmt: convCell("m1", "m1lm") },
+    { key: "nI", label: "Installs MTD", num: true, tip: "Projects installed this month (task 039B)", fmt: (v, r) => (r.footer ? fmtInt(v) : btn(v, () => openInst(`${r.name} · installs ${ctx.curText}`, r.inst))) },
+    { key: "nM0", label: "From M0 HOTOs", num: true, tip: "Installs this month whose HOTO was this month; small = share of the installs", fmt: ageCell("i0") },
+    { key: "nM1", label: "From M1 HOTOs", num: true, tip: "Installs this month whose HOTO was last month", fmt: ageCell("i1") },
+    { key: "nM2", label: "From M2+ HOTOs", num: true, tip: "Installs this month whose HOTO was two or more months ago (or has no HOTO date)", fmt: ageCell("i2") },
     { key: "p50", label: "HOTO → install P50", num: true, tip: "Projects installed this month: days from HOTO to installation", fmt: dCell },
     { key: "p75", label: "P75", num: true, fmt: dCell },
     { key: "p90", label: "P90", num: true, fmt: dCell },
@@ -80,42 +89,45 @@ export function render(main, { data, state, setState, ctx }) {
   ];
   const totalOf = (rs, name) => {
     const names = new Set(rs.map((r) => r.name)), sub = rows.filter((x) => names.has(cl(x))), sub2 = p2r.filter((x) => names.has(cl2(x)));
-    const m0 = conv(sub, ctx.cur, 0), m0lm = conv(sub, ctx.prevSame, 0), m1 = conv(sub, ctx.cur, 1), m1lm = conv(sub, ctx.prevSame, 1), tat = M.hotoToInstall(data, sub2, ctx.cur);
-    const s = (k) => rs.reduce((a, r) => a + r[k], 0);
-    return { footer: true, name, nH: s("nH"), m0: m0.pct, m0lm: m0lm.pct, m1: m1.pct, m1lm: m1lm.pct, p50: tat.p50, p75: tat.p75, p90: tat.p90, nP: s("nP"), nS: s("nS"), nO: s("nO") };
+    const tat = M.hotoToInstall(data, sub2, ctx.cur), s = (k) => rs.reduce((a, r) => a + r[k], 0);
+    return { footer: true, name, nH: s("nH"), ...installsBy(sub2), p50: tat.p50, p75: tat.p75, p90: tat.p90, nP: s("nP"), nS: s("nS"), nO: s("nO") };
   };
-  const sumParts = (t) => [el("span", {}, ["HOTOs ", el("b", { text: fmtInt(t.nH) })]), el("span", {}, ["M0 ", el("b", { text: t.m0 == null ? "–" : `${t.m0.toFixed(1)}%` })]),
+  const sumParts = (t) => [el("span", {}, ["HOTOs ", el("b", { text: fmtInt(t.nH) })]), el("span", {}, ["Installs ", el("b", { text: fmtInt(t.nI) })]),
     el("span", {}, ["P50 ", el("b", { text: dCell(t.p50) })]), el("span", {}, ["Stuck ", el("b", { text: fmtInt(t.nS) })])];
   const allT = totalOf(cRows, "All clusters");
-  main.append(block(1, "HOTO → installation by cluster", `${ctx.curText} · ${ctx.curRange} · conversion vs the same days last month · TAT of projects installed this month · pipeline live (active) · click a count for its projects`,
-    el("div", { class: "count", style: { margin: "0 0 8px" }, text: `All clusters: ${fmtInt(allT.nH)} HOTOs · M0 ${allT.m0 == null ? "–" : `${allT.m0.toFixed(1)}%`} · M1 ${allT.m1 == null ? "–" : `${allT.m1.toFixed(1)}%`} · HOTO → install P50 ${dCell(allT.p50)} · ${fmtInt(allT.nP)} not installed, ${fmtInt(allT.nS)} stuck (${R})` }),
+  const shareOf = (n) => (allT.nI ? `${Math.round((100 * n) / allT.nI)}%` : "–");
+  main.append(block(1, "HOTO → installation by cluster", `${ctx.curText} · ${ctx.curRange} · installs this month split by the month of their HOTO · TAT of projects installed this month · pipeline live (active) · cohort conversion (M0 / M1 / M2+ of each HOTO month) is on # of HOTOs · click a count for its projects`,
+    el("div", { class: "count", style: { margin: "0 0 8px" }, text: `All clusters: ${fmtInt(allT.nH)} HOTOs · ${fmtInt(allT.nI)} installs: ${fmtInt(allT.nM0)} from M0 HOTOs (${shareOf(allT.nM0)}), ${fmtInt(allT.nM1)} from M1 (${shareOf(allT.nM1)}), ${fmtInt(allT.nM2)} from M2+ (${shareOf(allT.nM2)}) · HOTO → install P50 ${dCell(allT.p50)} · ${fmtInt(allT.nP)} not installed, ${fmtInt(allT.nS)} stuck (${R})` }),
     tierTable({ rows: cRows, cols, totalOf, sumParts, tier: state.tier, onTier: (v) => setState({ tier: v }), sortKey: "nH", sortDir: -1 })));
 
   // ---------------- 2 · trend: conversion or TAT
+  // D-125: the graph's own cluster picker (this graph only, inside the top-bar filters)
+  const cp = chartClusters(state, setState, "p1", rows.map(cl));
+  const gRows = rows.filter((x) => cp.keep(cl(x))), gP2 = p2r.filter((x) => cp.keep(cl2(x)));
   const trend = state.p1Trend === "tat" ? "tat" : "conv";
   const grain = ["mom", "wow", "dod"].includes(state.p1Grain) ? state.p1Grain : "mom";
   let chart, note;
   if (trend === "conv") {
     const months = monthsBetween(monthBounds(shiftMonth(ctx.key, -6))[0], Math.min(monthBounds(ctx.key)[1], last));
     const range = (k) => { const [a, b] = monthBounds(k); return [a, Math.min(b, last)]; };
-    const series = [0, 1, 2].map((k) => months.map((m) => { const v = conv(rows, range(m), k); return v.base >= 30 && v.pct != null ? Math.round(v.pct * 10) / 10 : null; }));
+    const series = [0, 1, 2].map((k) => months.map((m) => { const v = conv(gRows, range(m), k); return v.base >= 30 && v.pct != null ? Math.round(v.pct * 10) / 10 : null; }));
     chart = lineChart(months.map((m) => monthLabel(m) + (monthBounds(m)[1] > last ? " (MTD)" : "")), [
       { label: "M0", data: series[0], color: "--series-1" }, { label: "M1", data: series[1], color: "--series-2" }, { label: "M2", data: series[2], color: "--series-3" }], { yFormat: (v) => `${v}%`, height: 290 });
     note = "M0 = HOTOs of the month installed in the same month · M1 = last month's HOTOs installed in this month · M2 = two months back · this month to date";
   } else {
     const labels = [], p50 = [], p90 = [];
-    const push2 = (lbl, r) => { const t = M.hotoToInstall(data, p2r, r); labels.push(lbl); p50.push(t.count >= 20 ? t.p50 : null); p90.push(t.count >= 20 ? t.p90 : null); };
+    const push2 = (lbl, r) => { const t = M.hotoToInstall(data, gP2, r); labels.push(lbl); p50.push(t.count >= 20 ? t.p50 : null); p90.push(t.count >= 20 ? t.p90 : null); };
     if (grain === "dod") for (let d = last - (daySpanOf(state) - 1); d <= last; d++) push2(fmtDay(d).slice(0, 6), [d, d]);
     else if (grain === "wow") for (let w = 11; w >= 0; w--) { const b = last - 7 * w, a = b - 6; push2(`${fmtDay(a).slice(0, 6)}–${fmtDay(b).slice(0, 6)}`, [a, b]); }
     else for (const k of monthsBetween(data.meta.windows.YTD[0], last)) { const [a, b] = monthBounds(k); push2(monthLabel(k) + (b > last ? " (MTD)" : ""), [a, Math.min(b, last)]); }
     chart = lineChart(labels, [{ label: "P50", data: p50, color: "--series-1" }, { label: "P90", data: p90, color: "--series-2" }], { yFormat: (v) => `${v} d`, height: 290 });
     note = "Projects installed in each period: days from HOTO to installation (periods with fewer than 20 installs left blank)";
   }
-  main.append(block(2, "Conversion and speed over time", note,
+  main.append(block(2, "Conversion and speed over time", note + cp.note,
     box([el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start", gap: "10px" } }, [
       segmented([["conv", "Conversion (M0 / M1 / M2)"], ["tat", "HOTO → install TAT"]], trend, (v) => setState({ p1Trend: v }), "Trend"),
       trend === "tat" ? segmented([["mom", "Month"], ["wow", "Week"], ["dod", "Day"]], grain, (v) => setState({ p1Grain: v }), "Grain") : null,
-      trend === "tat" && grain === "dod" ? daySpanSwitch(state, setState) : null]), chart])));
+      trend === "tat" && grain === "dod" ? daySpanSwitch(state, setState) : null, cp.node]), chart])));
 
   // ---------------- 3 · HOTO-day skew (last 3 full months of HOTOs)
   const skewMonths = [shiftMonth(ctx.key, -3), shiftMonth(ctx.key, -2), shiftMonth(ctx.key, -1)];
@@ -148,23 +160,26 @@ export function render(main, { data, state, setState, ctx }) {
   const tatOf = (x) => { const h = x[ci.hoto_day], i = instDay(x); return h != null && h >= from6 && h <= to6 && i != null && i >= h ? i - h : null; };
   const laneOf = (x) => label(f, "lane", x[ci.lane]);
   const dist = (xs) => { const t = xs.map(tatOf).filter((v) => v != null); return t.length ? { n: t.length, p10: percentile(t, 0.1), p50: percentile(t, 0.5), p90: percentile(t, 0.9) } : { n: 0 }; };
-  const best = {};  // network best per lane = the cluster with the lowest P50 among cells with 40+ installs (all clusters, no filters)
+  // D-125: P10 / P50 / P90 switch (default P90); the network best follows it
+  const Q = ["p10", "p50", "p90"].includes(state.p1LaneQ) ? state.p1LaneQ : "p90", QV = { p10: 0.1, p50: 0.5, p90: 0.9 }[Q], QL = Q.toUpperCase();
+  const best = {};  // network best per lane = the cluster with the lowest chosen percentile among cells with 40+ installs (all clusters, no filters)
   const allFacts = f.facts, allCl = (x) => label(f, "cluster", x[ci.cluster]);
   for (const ln of lanes) {
     const by = new Map(); for (const x of allFacts) { if (laneOf(x) !== ln) continue; const t = tatOf(x); if (t == null) continue; const k = allCl(x); if (!by.has(k)) by.set(k, []); by.get(k).push(t); }
-    let b = null; for (const [k, t] of by) { if (t.length < MIN_LANE_N || SKIP.has(k)) continue; const p = percentile(t, 0.5); if (!b || p < b.p50) b = { name: k, p50: p, n: t.length }; }
+    let b = null; for (const [k, t] of by) { if (t.length < MIN_LANE_N || SKIP.has(k)) continue; const p = percentile(t, QV); if (!b || p < b.v) b = { name: k, v: p, n: t.length }; }
     best[ln] = b;
   }
   const lRows = clusters.map((name) => { const rs = rows.filter((x) => cl(x) === name), r = { name, n: 0 }; for (const ln of lanes) { const d = dist(rs.filter((x) => laneOf(x) === ln)); r[ln] = d; r.n += d.n; } return r; }).filter((r) => r.n >= MIN_LANE_N);
   const lCell = (ln) => (d, r) => {
     if (!d || d.n < MIN_LANE_N) return el("span", { class: "count", text: d && d.n ? `n ${d.n}` : "·" });
-    const b = best[ln], gap = b ? d.p50 - b.p50 : null, t = gap == null ? "flat" : gap <= 3 ? "good" : gap <= 10 ? "warn" : "bad";
-    return el("span", { class: "split-cell", "data-tip": `${r.name} · ${ln}: P10 ${Math.round(d.p10)} · P50 ${Math.round(d.p50)} · P90 ${Math.round(d.p90)} days (${d.n} installs)${b ? `\nNetwork best: ${b.name} ${Math.round(b.p50)} days` : ""}` }, [
-      `${Math.round(d.p50)} d`, gap != null ? el("small", { class: `t-${t}`, text: gap <= 0.5 ? "best" : `+${Math.round(gap)}` }) : null]);
+    const b = best[ln], gap = b ? d[Q] - b.v : null, t = gap == null ? "flat" : gap <= 3 ? "good" : gap <= 10 ? "warn" : "bad";
+    return el("span", { class: "split-cell", "data-tip": `${r.name} · ${ln}: P10 ${Math.round(d.p10)} · P50 ${Math.round(d.p50)} · P90 ${Math.round(d.p90)} days (${d.n} installs)${b ? `\nNetwork best ${QL}: ${b.name} ${Math.round(b.v)} days` : ""}` }, [
+      `${Math.round(d[Q])} d`, gap != null ? el("small", { class: `t-${t}`, text: gap <= 0.5 ? "best" : `+${Math.round(gap)}` }) : null]);
   };
-  const bestRow = { footer: true, name: "Network best (P50)" }; for (const ln of lanes) bestRow[ln] = best[ln];
-  const bestCell = (ln) => (d, r) => (r.footer ? (best[ln] ? el("span", { class: "split-cell" }, [`${Math.round(best[ln].p50)} d`, el("small", { text: best[ln].name })]) : "–") : lCell(ln)(d, r));
-  main.append(block(4, "HOTO → install by cluster and lane, against the best", `HOTOs of ${monthLabel(monthKey(from6))} – ${monthLabel(monthKey(to6))} that are installed · P50 days, small = days slower than the network's best cluster for that lane (green within 3, amber within 10) · cells with ${MIN_LANE_N}+ installs · hover for P10 / P90`,
+  const bestRow = { footer: true, name: `Network best (${QL})` }; for (const ln of lanes) bestRow[ln] = best[ln];
+  const bestCell = (ln) => (d, r) => (r.footer ? (best[ln] ? el("span", { class: "split-cell" }, [`${Math.round(best[ln].v)} d`, el("small", { text: best[ln].name })]) : "–") : lCell(ln)(d, r));
+  main.append(block(4, "HOTO → install by cluster and lane, against the best", `HOTOs of ${monthLabel(monthKey(from6))} – ${monthLabel(monthKey(to6))} that are installed · ${QL} days, small = days slower than the network's best cluster for that lane at the same percentile (green within 3, amber within 10) · cells with ${MIN_LANE_N}+ installs · hover for all three`,
+    el("div", { class: "card-actions", style: { marginBottom: "8px", justifyContent: "flex-start" } }, [segmented([["p10", "P10"], ["p50", "P50"], ["p90", "P90"]], Q, (v) => setState({ p1LaneQ: v }), "Percentile")]),
     box(dataTable([{ key: "name", label: "Cluster" }, { key: "n", label: "Installs", num: true, fmt: fmtInt }, ...lanes.map((ln) => ({ key: ln, label: ln, num: true, fmt: bestCell(ln) }))],
       lRows, { sortKey: "n", sortDir: -1, maxHeight: 560, footer: bestRow }))));
 
